@@ -87,49 +87,31 @@ function switchTab(tabName) {
     }
 }
 
-// Gallery Media Base64 Handler (Asynchronous Multiple Files Fix)
+// Helper Function to convert file to Base64 instantly
+function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+    });
+}
+
+// Gallery Media Label Updater (Sirf status text update karega, validation submit par hogi)
 async function previewMedia(input, labelId) {
     if(input.id === 'p-image-file') {
-        uploadedImagesArray = []; // Reset previous selection
         const files = input.files;
-        
         if (files.length < 3) {
             showNotification('Please select at least 3 images.', 'error');
             input.value = '';
             document.getElementById(labelId).innerText = 'Select 3 or More Images *';
             return;
         }
-
-        // Processing files using Promises to guarantee they load before submission
-        const filePromises = Array.from(files).map(file => {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    resolve(e.target.result);
-                };
-                reader.readAsDataURL(file);
-            });
-        });
-
-        try {
-            uploadedImagesArray = await Promise.all(filePromises);
-            document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
-            showNotification(`${files.length} images loaded successfully.`);
-        } catch (error) {
-            showNotification("Error loading images, please try again.", "error");
-        }
-
+        document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
     } else if (input.id === 'p-video-file') {
         const file = input.files[0];
         if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            uploadedVideoBase64 = e.target.result;
-            document.getElementById(labelId).textContent = "Video Selected ✓";
-            showNotification("Video loaded successfully from device.");
-        }
-        reader.readAsDataURL(file);
+        document.getElementById(labelId).textContent = "Video Selected ✓";
     }
 }
 
@@ -277,38 +259,45 @@ function instantBuyNow(productId) {
     showNotification("Redirected to Instant Checkout Form!");
 }
 
-// Upload Product Form Submit Handler (DIRECT HTML INPUT VALIDATION FIX)
+// Upload Product Form Submit Handler (INSTANT ONE-CLICK FIX)
 document.getElementById('product-upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const imageInput = document.getElementById('p-image-file');
+    const videoInput = document.getElementById('p-video-file');
     
-    // Check files directly from DOM input element instead of array variable
     if (!imageInput || !imageInput.files || imageInput.files.length < 3) {
         showNotification("Please select at least 3 product photos from gallery.", "error");
         return;
     }
 
-    // Fallback if array processing is still incomplete
-    if (uploadedImagesArray.length === 0) {
-        showNotification("Images are still loading, please click submit again in 2 seconds.", "error");
-        return;
-    }
-
-    const payload = {
-        title: document.getElementById('p-title').value,
-        price: document.getElementById('p-price').value,
-        description: document.getElementById('p-desc').value,
-        imageBase64: uploadedImagesArray[0], 
-        videoBase64: uploadedVideoBase64,
-        transactionId: document.getElementById('p-txid').value,
-        paymentDetails: document.getElementById('p-payment-details').value,
-        address: document.getElementById('p-address').value,
-        contactNumber: document.getElementById('p-contact').value,
-        sellerEmail: document.getElementById('p-email').value
-    };
+    // Submit button ke click karte hi fast processing shuru
+    showNotification("Processing media files...", "success");
 
     try {
+        // Convert all selected images to base64 synchronously on form submit
+        const imagePromises = Array.from(imageInput.files).map(file => fileToDataURL(file));
+        const imagesBase64Array = await Promise.all(imagePromises);
+
+        // Convert video if available
+        let finalVideoBase64 = "";
+        if (videoInput && videoInput.files && videoInput.files[0]) {
+            finalVideoBase64 = await fileToDataURL(videoInput.files[0]);
+        }
+
+        const payload = {
+            title: document.getElementById('p-title').value,
+            price: document.getElementById('p-price').value,
+            description: document.getElementById('p-desc').value,
+            imageBase64: imagesBase64Array[0], // First image goes as primary view
+            videoBase64: finalVideoBase64,
+            transactionId: document.getElementById('p-txid').value,
+            paymentDetails: document.getElementById('p-payment-details').value,
+            address: document.getElementById('p-address').value,
+            contactNumber: document.getElementById('p-contact').value,
+            sellerEmail: document.getElementById('p-email').value
+        };
+
         const res = await fetch('/api/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -319,8 +308,6 @@ document.getElementById('product-upload-form').addEventListener('submit', async 
         if(res.ok) {
             showNotification("Submitted! Sent verification request to Admin.");
             document.getElementById('product-upload-form').reset();
-            uploadedImagesArray = [];
-            uploadedVideoBase64 = "";
             document.getElementById('img-preview-label').textContent = "Select 3 or More Images *";
             document.getElementById('vid-preview-label').textContent = "Select Video (Optional)";
             renderSellerListings();
@@ -328,7 +315,7 @@ document.getElementById('product-upload-form').addEventListener('submit', async 
             showNotification(data.error || "Submission rejected", "error");
         }
     } catch(err) {
-        showNotification("Connection timeout.", "error");
+        showNotification("Connection error or large file size.", "error");
     }
 });
 
@@ -511,7 +498,7 @@ async function handleAuth() {
     }
 }
 
- function logout() {
+function logout() {
     currentUser = null;
     const badge = document.getElementById('user-status-badge');
     if (badge) badge.classList.add('hidden');
