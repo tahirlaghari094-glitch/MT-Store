@@ -9,13 +9,14 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 const PORT = process.env.PORT || 5000;
 
-const DATA_DIR = path.join(__dirname, 'Data');
+// Vercel par write karne ke liye /tmp directory use hoti hai
+const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'Data');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const ADMIN_EMAIL = 'lagharitahir08@gmail.com';
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(PRODUCTS_FILE)) fs.writeFileSync(PRODUCTS_FILE, JSON.stringify([], null, 2));
 if (!fs.existsSync(ORDERS_FILE)) fs.writeFileSync(ORDERS_FILE, JSON.stringify([], null, 2));
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2));
@@ -153,7 +154,8 @@ app.post('/api/products', (req, res) => {
     products.push(newProduct);
     fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
 
-    const approveUrl = `http://localhost:${PORT}/api/products/approve/${productId}`;
+    const baseUrl = req.headers.host ? `https://${req.headers.host}` : `http://localhost:${PORT}`;
+    const approveUrl = `${baseUrl}/api/products/approve/${productId}`;
     const emailHtml = `
         <div style="font-family: Arial, sans-serif; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0f172a; color: #ffffff;">
             <h2 style="color: #f97316; margin-bottom: 4px;">💼 New Store Submission Pending</h2>
@@ -187,7 +189,6 @@ app.get('/api/products/approve/:id', (req, res) => {
     }
 });
 
-// Comprehensive Order Dispatch API Route with complete Buyer Details embedded in HTML Emails
 app.post('/api/orders', (req, res) => {
     const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
     if (!items || items.length === 0 || !buyerEmail) return res.status(400).json({ error: "Incomplete order details." });
@@ -198,28 +199,23 @@ app.post('/api/orders', (req, res) => {
     items.forEach(item => {
         const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
         
-        // Save to Database
         orders.push({
             id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity,
             buyerName, buyerEmail: buyerEmail.toLowerCase(), buyerPhone, buyerAddress,
             status: 'Processing', createdAt: new Date().toISOString()
         });
 
-        // Find product specific seller context
         const linkedProduct = products.find(p => p.id === item.id);
         const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
 
-        // Structured email template containing full dispatch markers
         const detailedOrderHtml = `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #1e293b; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0b0f19; color: #f3f4f6;">
                 <h2 style="color: #f97316; border-bottom: 2px solid #1e293b; padding-bottom: 12px; margin-top: 0;">📦 Order Dispatch Report: ${orderId}</h2>
-                
                 <h3 style="color: #38bdf8; margin-bottom: 8px;">🛒 Product Details</h3>
                 <p style="margin: 4px 0;"><strong>Item Title:</strong> ${item.title}</p>
                 <p style="margin: 4px 0;"><strong>Quantity Ordered:</strong> ${item.quantity}</p>
                 <p style="margin: 4px 0;"><strong>Unit Price:</strong> PKR ${item.price}</p>
                 <p style="margin: 4px 0;"><strong>Total Bill:</strong> <span style="color: #facc15; font-weight: bold;">PKR ${item.price * item.quantity}</span></p>
-                
                 <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; margin-top: 20px;">
                     <h3 style="color: #4ade80; margin-top: 0; margin-bottom: 8px;">📋 Verified Buyer Shipping Information</h3>
                     <p style="margin: 4px 0;"><strong>Full Name:</strong> ${buyerName}</p>
@@ -227,29 +223,26 @@ app.post('/api/orders', (req, res) => {
                     <p style="margin: 4px 0;"><strong>Contact Number (COD):</strong> ${buyerPhone}</p>
                     <p style="margin: 4px 0; line-height: 1.4;"><strong>Complete Shipping Address:</strong> ${buyerAddress}</p>
                 </div>
-
-                <p style="font-size: 11px; color: #94a3b8; margin-top: 24px; border-top: 1px solid #1e293b; padding-top: 12px; text-align: center;">
-                    This is an automated operational dispatch email from MT Store Hub. Cash on Delivery protocols active.
-                </p>
             </div>
         `;
 
-        // Send to Buyer
         sendHtmlEmail(buyerEmail, `🛍️ MT Store Order Confirmation: ${orderId}`, detailedOrderHtml);
-        
-        // Send to Admin
         sendHtmlEmail(ADMIN_EMAIL, `🔔 Platform Notification: Order ${orderId}`, detailedOrderHtml);
-        
-        // Send to Product Seller (Merchant)
         if (sellerTargetEmail) {
             sendHtmlEmail(sellerTargetEmail, `💼 New Order Received for Your Product: ${orderId}`, detailedOrderHtml);
         }
     });
 
     fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2));
-    res.json({ message: "Order placed successfully!" });
+    res.json({ message: "Order places successfully!" });
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 MT Store Engine Active on http://localhost:${PORT}`);
-});
+// Local test port active logic
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 MT Store Engine Active on http://localhost:${PORT}`);
+    });
+}
+
+// Vercel deployment serverless export configuration
+module.exports = app;
