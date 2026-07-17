@@ -4,7 +4,7 @@ let currentUser = null;
 let currentAccountType = 'common'; // common or seller
 
 // Base64 Media Storage variables
-let uploadedImageBase64 = "";
+let uploadedImagesArray = [];
 let uploadedVideoBase64 = "";
 
 // Custom Glass-morphic Toast Notification Engine
@@ -87,24 +87,42 @@ function switchTab(tabName) {
     }
 }
 
-// Gallery Media Base64 Handler
+// Gallery Media Base64 Handler (Multiple Files Fix)
 function previewMedia(input, labelId) {
-    const file = input.files[0];
-    if (!file) return;
+    if(input.id === 'p-image-file') {
+        uploadedImagesArray = []; // Reset previous selection
+        const files = input.files;
+        
+        if (files.length < 3) {
+            alert('Please select at least 3 images.');
+            input.value = '';
+            document.getElementById(labelId).innerText = 'Select 3 or More Images *';
+            return;
+        }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        if(input.id === 'p-image-file') {
-            uploadedImageBase64 = e.target.result;
-            document.getElementById(labelId).textContent = "Photo Selected ✓";
-            showNotification("Image loaded successfully from device.");
-        } else if (input.id === 'p-video-file') {
+        document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
+        
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImagesArray.push(e.target.result);
+            }
+            reader.readAsDataURL(file);
+        });
+        
+        showNotification(`${files.length} images loaded successfully.`);
+    } else if (input.id === 'p-video-file') {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
             uploadedVideoBase64 = e.target.result;
             document.getElementById(labelId).textContent = "Video Selected ✓";
             showNotification("Video loaded successfully from device.");
         }
+        reader.readAsDataURL(file);
     }
-    reader.readAsDataURL(file);
 }
 
 // Fetch and Render Approved Products
@@ -151,13 +169,13 @@ function changeDetailQuantity(amount) {
     qtyInput.value = currentQty;
 }
 
+// Update Cart Quantity
 function updateCartQuantity(productId, amount) {
     const item = cart.find(i => i.id === productId);
     if (!item) return;
     item.quantity += amount;
     if (item.quantity < 1) item.quantity = 1;
     
-    // Recalculate badge total items count
     const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
     document.getElementById('cart-count').textContent = totalItems;
     
@@ -198,7 +216,6 @@ function viewDetails(productId) {
             <p class="text-xl font-bold text-orange-400 mb-4">PKR ${p.price}</p>
             <p class="text-gray-300 text-sm leading-relaxed">${p.description || 'No additional details provided.'}</p>
             
-            <!-- Quantity Plus Minus Selector Grid -->
             <div class="flex items-center gap-3 my-5 bg-slate-950/30 p-3 rounded-xl border border-gray-850 w-fit">
                 <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Select Qty:</span>
                 <div class="flex items-center bg-slate-950 border border-gray-800 rounded-xl overflow-hidden">
@@ -231,51 +248,12 @@ function viewDetails(productId) {
                 <div><span class="text-gray-500 block mb-0.5">Contact Merchant:</span> <span class="font-semibold text-white">${p.contactNumber || 'Not Available'}</span></div>
             </div>
         </div>
-
-        <div class="bg-slate-950/40 border border-gray-800 rounded-2xl p-5 space-y-4">
-            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
-                <h3 class="text-sm font-black text-gray-300 uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-star text-amber-400"></i> Reviews & Feedback
-                </h3>
-                <div class="flex items-center gap-1 text-xs text-amber-400">
-                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i>
-                    <span class="text-gray-400 ml-1 font-bold">(4.8)</span>
-                </div>
-            </div>
-            
-            <form onsubmit="event.preventDefault(); showNotification('Comment Posted Successfully!');" class="space-y-3">
-                <div class="flex items-center gap-2 text-xs text-gray-400">
-                    <span>Your Rating:</span>
-                    <div class="flex gap-1 text-amber-400 text-sm">
-                        <i class="fa-solid fa-star cursor-pointer"></i>
-                        <i class="fa-solid fa-star cursor-pointer"></i>
-                        <i class="fa-solid fa-star cursor-pointer"></i>
-                        <i class="fa-solid fa-star cursor-pointer"></i>
-                        <i class="fa-solid fa-star text-gray-600 cursor-pointer"></i>
-                    </div>
-                </div>
-                <textarea placeholder="Write a verified purchase review or leave a comment query..." rows="3" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none text-xs"></textarea>
-                <button type="submit" class="bg-slate-800 hover:bg-slate-700 border border-gray-750 text-white font-bold px-4 py-2 rounded-xl text-xs transition">
-                    Post Comment
-                </button>
-            </form>
-
-            <div class="space-y-3 pt-2">
-                <div class="bg-slate-900/40 p-3 rounded-xl border border-gray-800/60 text-xs">
-                    <div class="flex justify-between mb-1">
-                        <span class="font-bold text-gray-300">Ali Khan</span>
-                        <span class="text-amber-400"><i class="fa-solid fa-star"></i> 5.0</span>
-                    </div>
-                    <p class="text-gray-400">Great standard dynamic delivery. Completely satisfied with original cash on delivery dispatch.</p>
-                </div>
-            </div>
-        </div>
     `;
 
     switchTab('detail');
 }
 
-// Instant Buy Now Checkout Handler
+// Instant Buy Now
 function instantBuyNow(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if(!p) return;
@@ -291,12 +269,12 @@ function instantBuyNow(productId) {
     showNotification("Redirected to Instant Checkout Form!");
 }
 
-// Upload Product (Seller Form)
+// Upload Product Form Submit Handler
 document.getElementById('product-upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if(!uploadedImageBase64) {
-        showNotification("Please select a product photo from gallery.", "error");
+    if(uploadedImagesArray.length < 3) {
+        showNotification("Please select at least 3 product photos from gallery.", "error");
         return;
     }
 
@@ -304,7 +282,7 @@ document.getElementById('product-upload-form').addEventListener('submit', async 
         title: document.getElementById('p-title').value,
         price: document.getElementById('p-price').value,
         description: document.getElementById('p-desc').value,
-        imageBase64: uploadedImageBase64,
+        imageBase64: uploadedImagesArray[0], 
         videoBase64: uploadedVideoBase64,
         transactionId: document.getElementById('p-txid').value,
         paymentDetails: document.getElementById('p-payment-details').value,
@@ -324,7 +302,7 @@ document.getElementById('product-upload-form').addEventListener('submit', async 
         if(res.ok) {
             showNotification("Submitted! Sent verification request to Admin.");
             document.getElementById('product-upload-form').reset();
-            uploadedImageBase64 = "";
+            uploadedImagesArray = [];
             uploadedVideoBase64 = "";
             document.getElementById('img-preview-label').textContent = "Select 3 or More Images *";
             document.getElementById('vid-preview-label').textContent = "Select Video (Optional)";
@@ -597,7 +575,6 @@ function renderCart() {
                     <div>
                         <h4 class="font-extrabold text-sm">${item.title}</h4>
                         <p class="text-xs text-gray-400 mb-1">Price: PKR ${item.price}</p>
-                        <!-- Plus Minus inside Cart Item View -->
                         <div class="flex items-center bg-slate-950 border border-gray-800 rounded-lg overflow-hidden w-fit">
                             <button onclick="updateCartQuantity('${item.id}', -1)" class="px-2 py-0.5 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">-</button>
                             <span class="px-3 text-xs font-bold text-orange-400">${item.quantity}</span>
