@@ -277,12 +277,21 @@ function instantBuyNow(productId) {
     showNotification("Redirected to Instant Checkout Form!");
 }
 
-// Upload Product Form Submit Handler
+// Upload Product Form Submit Handler (DIRECT HTML INPUT VALIDATION FIX)
 document.getElementById('product-upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if(!uploadedImagesArray || uploadedImagesArray.length < 3) {
+    const imageInput = document.getElementById('p-image-file');
+    
+    // Check files directly from DOM input element instead of array variable
+    if (!imageInput || !imageInput.files || imageInput.files.length < 3) {
         showNotification("Please select at least 3 product photos from gallery.", "error");
+        return;
+    }
+
+    // Fallback if array processing is still incomplete
+    if (uploadedImagesArray.length === 0) {
+        showNotification("Images are still loading, please click submit again in 2 seconds.", "error");
         return;
     }
 
@@ -502,7 +511,7 @@ async function handleAuth() {
     }
 }
 
-function logout() {
+ function logout() {
     currentUser = null;
     const badge = document.getElementById('user-status-badge');
     if (badge) badge.classList.add('hidden');
