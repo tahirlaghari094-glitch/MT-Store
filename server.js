@@ -1,5 +1,4 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
 
@@ -8,18 +7,12 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 const PORT = process.env.PORT || 5000;
-
-// Vercel par write karne ke liye /tmp directory use hoti hai
-const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'Data');
-const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
-const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const ADMIN_EMAIL = 'lagharitahir08@gmail.com';
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(PRODUCTS_FILE)) fs.writeFileSync(PRODUCTS_FILE, JSON.stringify([], null, 2));
-if (!fs.existsSync(ORDERS_FILE)) fs.writeFileSync(ORDERS_FILE, JSON.stringify([], null, 2));
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2));
+// Local files ki jagah data ab seedha server ki memory me save hoga
+global.productsArray = global.productsArray || [];
+global.ordersArray = global.ordersArray || [];
+global.usersArray = global.usersArray || [];
 
 app.use(express.static(__dirname)); 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -57,8 +50,7 @@ app.post('/api/users/login', (req, res) => {
     if (!email) return res.status(400).json({ error: "Email is required" });
 
     try {
-        const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-        let user = users.find(u => u.email === email.toLowerCase());
+        let user = global.usersArray.find(u => u.email === email.toLowerCase());
 
         if (!user) {
             user = {
@@ -66,8 +58,7 @@ app.post('/api/users/login', (req, res) => {
                 username: email.split('@')[0],
                 profileImage: ''
             };
-            users.push(user);
-            fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+            global.usersArray.push(user);
         }
         res.json({ success: true, user });
     } catch (e) {
@@ -78,16 +69,14 @@ app.post('/api/users/login', (req, res) => {
 app.post('/api/users/update', (req, res) => {
     const { email, username, profileImage } = req.body;
     try {
-        const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-        const index = users.findIndex(u => u.email === email.toLowerCase());
+        const index = global.usersArray.findIndex(u => u.email === email.toLowerCase());
 
         if (index === -1) return res.status(404).json({ error: "User profile not found" });
 
-        if (username) users[index].username = username;
-        if (profileImage) users[index].profileImage = profileImage;
+        if (username) global.usersArray[index].username = username;
+        if (profileImage) global.usersArray[index].profileImage = profileImage;
 
-        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-        res.json({ success: true, user: users[index] });
+        res.json({ success: true, user: global.usersArray[index] });
     } catch (e) {
         res.status(500).json({ error: "Failed to update profile settings" });
     }
@@ -98,8 +87,7 @@ app.post('/api/users/update', (req, res) => {
 // ==========================================
 app.get('/api/products', (req, res) => {
     try {
-        const products = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
-        res.json(products.filter(p => p.status === 'approved'));
+        res.json(global.productsArray.filter(p => p.status === 'approved'));
     } catch (e) {
         res.status(500).json({ error: "Failed to read products" });
     }
@@ -107,8 +95,7 @@ app.get('/api/products', (req, res) => {
 
 app.get('/api/products/seller/:email', (req, res) => {
     try {
-        const products = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
-        const sellerProducts = products.filter(p => p.sellerEmail && p.sellerEmail.toLowerCase() === req.params.email.toLowerCase());
+        const sellerProducts = global.productsArray.filter(p => p.sellerEmail && p.sellerEmail.toLowerCase() === req.params.email.toLowerCase());
         res.json(sellerProducts);
     } catch (e) {
         res.status(500).json({ error: "Failed to fetch seller products" });
@@ -117,12 +104,9 @@ app.get('/api/products/seller/:email', (req, res) => {
 
 app.get('/api/orders/user/:email', (req, res) => {
     try {
-        const orders = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
-        const products = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
-        
-        const userOrders = orders.filter(o => o.buyerEmail.toLowerCase() === req.params.email.toLowerCase())
+        const userOrders = global.ordersArray.filter(o => o.buyerEmail.toLowerCase() === req.params.email.toLowerCase())
             .map(order => {
-                const prod = products.find(p => p.id === order.productId);
+                const prod = global.productsArray.find(p => p.id === order.productId);
                 return {
                     ...order,
                     productImage: prod ? prod.imageUrl : ''
@@ -140,7 +124,6 @@ app.post('/api/products', (req, res) => {
         return res.status(400).json({ error: "Required details or verification transaction is missing." });
     }
 
-    const products = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
     const productId = Date.now().toString();
 
     const newProduct = {
@@ -151,8 +134,7 @@ app.post('/api/products', (req, res) => {
         status: 'pending', createdAt: new Date().toISOString()
     };
 
-    products.push(newProduct);
-    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+    global.productsArray.push(newProduct);
 
     const baseUrl = req.headers.host ? `https://${req.headers.host}` : `http://localhost:${PORT}`;
     const approveUrl = `${baseUrl}/api/products/approve/${productId}`;
@@ -175,14 +157,12 @@ app.post('/api/products', (req, res) => {
 
 app.get('/api/products/approve/:id', (req, res) => {
     try {
-        const products = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
-        const index = products.findIndex(p => p.id === req.params.id);
+        const index = global.productsArray.findIndex(p => p.id === req.params.id);
         if (index === -1) return res.send("<h1>Product not found!</h1>");
 
-        products[index].status = 'approved';
-        fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+        global.productsArray[index].status = 'approved';
 
-        sendHtmlEmail(products[index].sellerEmail, `🚀 Product Live!`, `<h2>Your product "${products[index].title}" is live now.</h2>`);
+        sendHtmlEmail(global.productsArray[index].sellerEmail, `🚀 Product Live!`, `<h2>Your product "${global.productsArray[index].title}" is live now.</h2>`);
         res.send(`<h1 style="text-align:center; margin-top:50px; color:#22c55e;">✅ Product Approved Successfully!</h1>`);
     } catch (e) {
         res.send("<h1>Server Error processing approval.</h1>");
@@ -193,19 +173,16 @@ app.post('/api/orders', (req, res) => {
     const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
     if (!items || items.length === 0 || !buyerEmail) return res.status(400).json({ error: "Incomplete order details." });
 
-    const orders = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
-    const products = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
-
     items.forEach(item => {
         const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
         
-        orders.push({
+        global.ordersArray.push({
             id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity,
             buyerName, buyerEmail: buyerEmail.toLowerCase(), buyerPhone, buyerAddress,
             status: 'Processing', createdAt: new Date().toISOString()
         });
 
-        const linkedProduct = products.find(p => p.id === item.id);
+        const linkedProduct = global.productsArray.find(p => p.id === item.id);
         const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
 
         const detailedOrderHtml = `
@@ -233,16 +210,13 @@ app.post('/api/orders', (req, res) => {
         }
     });
 
-    fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2));
-    res.json({ message: "Order places successfully!" });
+    res.json({ message: "Order placed successfully!" });
 });
 
-// Local test port active logic
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
         console.log(`🚀 MT Store Engine Active on http://localhost:${PORT}`);
     });
 }
 
-// Vercel deployment serverless export configuration
 module.exports = app;
