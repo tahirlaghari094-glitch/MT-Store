@@ -87,30 +87,38 @@ function switchTab(tabName) {
     }
 }
 
-// Gallery Media Base64 Handler (Multiple Files Fix)
-function previewMedia(input, labelId) {
+// Gallery Media Base64 Handler (Asynchronous Multiple Files Fix)
+async function previewMedia(input, labelId) {
     if(input.id === 'p-image-file') {
         uploadedImagesArray = []; // Reset previous selection
         const files = input.files;
         
         if (files.length < 3) {
-            alert('Please select at least 3 images.');
+            showNotification('Please select at least 3 images.', 'error');
             input.value = '';
             document.getElementById(labelId).innerText = 'Select 3 or More Images *';
             return;
         }
 
-        document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
-        
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                uploadedImagesArray.push(e.target.result);
-            }
-            reader.readAsDataURL(file);
+        // Processing files using Promises to guarantee they load before submission
+        const filePromises = Array.from(files).map(file => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    resolve(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
         });
-        
-        showNotification(`${files.length} images loaded successfully.`);
+
+        try {
+            uploadedImagesArray = await Promise.all(filePromises);
+            document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
+            showNotification(`${files.length} images loaded successfully.`);
+        } catch (error) {
+            showNotification("Error loading images, please try again.", "error");
+        }
+
     } else if (input.id === 'p-video-file') {
         const file = input.files[0];
         if (!file) return;
@@ -273,7 +281,7 @@ function instantBuyNow(productId) {
 document.getElementById('product-upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if(uploadedImagesArray.length < 3) {
+    if(!uploadedImagesArray || uploadedImagesArray.length < 3) {
         showNotification("Please select at least 3 product photos from gallery.", "error");
         return;
     }
