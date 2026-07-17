@@ -14,8 +14,12 @@ global.productsArray = global.productsArray || [];
 global.ordersArray = global.ordersArray || [];
 global.usersArray = global.usersArray || [];
 
-app.use(express.static(__dirname)); 
-app.use(express.static(path.join(__dirname, 'public')));
+// Vercel ke liye static files path configuration
+const publicPath = path.join(process.cwd(), 'public');
+const rootPath = process.cwd();
+
+app.use(express.static(rootPath));
+app.use(express.static(publicPath));
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -211,6 +215,11 @@ app.post('/api/orders', (req, res) => {
     });
 
     res.json({ message: "Order placed successfully!" });
+});
+
+// Serve frontend main application fallback route
+app.get('/*', (req, res) => {
+    res.sendFile(path.join(rootPath, 'index.html'));
 });
 
 if (process.env.NODE_ENV !== 'production') {
