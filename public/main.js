@@ -1,1298 +1,444 @@
-let currentProducts = [];
-
-let cart = [];
-
-let currentUser = null;
-
-let currentAccountType = 'common'; // common or seller
-
-
-
-// Base64 Media Storage variables
-
-let uploadedImagesArray = [];
-
-let uploadedVideoBase64 = "";
-
-
-
-// Custom Glass-morphic Toast Notification Engine
-
-function showNotification(message, type = 'success') {
-
-    const toast = document.getElementById('toast-notification');
-
-    const msgText = document.getElementById('toast-message');
-
-    const icon = document.getElementById('toast-icon');
-
-
-
-    if (!toast || !msgText || !icon) return;
-
-    msgText.textContent = message;
-
-    
-
-    if (type === 'error') {
-
-        toast.classList.remove('border-emerald-500/30', 'text-emerald-400');
-
-        toast.classList.add('border-rose-500/30', 'text-rose-400');
-
-        icon.className = "fa-solid fa-circle-exclamation text-xl text-rose-400";
-
-    } else {
-
-        toast.classList.remove('border-rose-500/30', 'text-rose-400');
-
-        toast.classList.add('border-emerald-500/30', 'text-emerald-400');
-
-        icon.className = "fa-solid fa-circle-check text-xl text-emerald-400";
-
-    }
-
-
-
-    toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
-
-    toast.classList.add('opacity-100', 'translate-y-0');
-
-
-
-    setTimeout(() => {
-
-        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
-
-        toast.classList.remove('opacity-100', 'translate-y-0');
-
-    }, 4500);
-
-}
-
-
-
-// 3 Dots Dynamic Dropdown Menu
-
-function toggleDropdown() {
-
-    document.getElementById('accountDropdown').classList.toggle('hidden');
-
-}
-
-
-
-function setAccountType(type) {
-
-    currentAccountType = type;
-
-    toggleDropdown();
-
-    
-
-    const badge = document.getElementById('user-status-badge');
-
-    if (badge) {
-
-        badge.textContent = `${type} profile`;
-
-        badge.classList.remove('hidden');
-
-    }
-
-
-
-    if(type === 'seller') {
-
-        showNotification("Switched to Merchant Account dashboard.");
-
-        switchTab('seller');
-
-    } else {
-
-        showNotification("Switched to Common Buyer Account.");
-
-        switchTab('home');
-
-    }
-
-    
-
-    updateProfilePanel();
-
-}
-
-
-
-// Dynamic Tabs Controller
-
-function switchTab(tabName) {
-
-    document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
-
-    
-
-    if (tabName === 'home') {
-
-        document.getElementById('home-view').classList.add('active');
-
-        loadProducts();
-
-    }
-
-    else if (tabName === 'detail') document.getElementById('detail-view').classList.add('active');
-
-    else if (tabName === 'seller') {
-
-        document.getElementById('seller-view').classList.add('active');
-
-        renderSellerListings();
-
-    }
-
-    else if (tabName === 'cart') {
-
-        document.getElementById('cart-view').classList.add('active');
-
-        renderCart();
-
-    }
-
-    else if (tabName === 'account') {
-
-        document.getElementById('account-view').classList.add('active');
-
-        updateProfilePanel();
-
-    }
-
-    else if (tabName === 'messages') {
-
-        document.getElementById('messages-view').classList.add('active');
-
-    }
-
-}
-
-
-
-// Helper Function to convert file to Base64 instantly
-
-function fileToDataURL(file) {
-
-    return new Promise((resolve, reject) => {
-
-        const reader = new FileReader();
-
-        reader.onload = (e) => resolve(e.target.result);
-
-        reader.onerror = (e) => reject(e);
-
-        reader.readAsDataURL(file);
-
-    });
-
-}
-
-
-
-// Gallery Media Label Updater (Sirf status text update karega, validation submit par hogi)
-
-async function previewMedia(input, labelId) {
-
-    if(input.id === 'p-image-file') {
-
-        const files = input.files;
-
-        if (files.length < 3) {
-
-            showNotification('Please select at least 3 images.', 'error');
-
-            input.value = '';
-
-            document.getElementById(labelId).innerText = 'Select 3 or More Images *';
-
-            return;
-
-        }
-
-        document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
-
-    } else if (input.id === 'p-video-file') {
-
-        const file = input.files[0];
-
-        if (!file) return;
-
-        document.getElementById(labelId).textContent = "Video Selected ✓";
-
-    }
-
-}
-
-
-
-// Fetch and Render Approved Products
-
-async function loadProducts() {
-
-    try {
-
-        const response = await fetch('/api/products');
-
-        currentProducts = await response.json();
-
-        const grid = document.getElementById('product-grid');
-
-        if (!grid) return;
-
-        grid.innerHTML = '';
-
-
-
-        if(currentProducts.length === 0) {
-
-            grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No active products on the store. Open Account/Menu to upload items.</p>`;
-
-            return;
-
-        }
-
-
-
-        currentProducts.forEach(product => {
-
-            grid.innerHTML += `
-
-                <div class="bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
-
-                    <img src="${product.imageUrl}" alt="${product.title}" class="w-full h-44 object-cover">
-
-                    <div class="p-4">
-
-                        <h3 class="font-extrabold text-sm truncate">${product.title}</h3>
-
-                        <p class="text-xs text-gray-400 mt-1 truncate">${product.description || 'Verified Quality'}</p>
-
-                        <div class="flex items-center justify-between mt-3">
-
-                            <span class="text-sm font-black text-orange-400">PKR ${product.price}</span>
-
-                            <span class="text-[8px] bg-slate-800 border border-gray-700 text-gray-400 px-2 py-1 rounded-full font-bold uppercase">COD</span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            `;
-
-        });
-
-    } catch (e) {
-
-        showNotification("Failed to connect to MT-Server database.", "error");
-
-    }
-
-}
-
-
-
-// Quantity Counter Engine Functions
-
-function changeDetailQuantity(amount) {
-
-    const qtyInput = document.getElementById('detail-quantity');
-
-    if (!qtyInput) return;
-
-    let currentQty = parseInt(qtyInput.value) || 1;
-
-    currentQty += amount;
-
-    if (currentQty < 1) currentQty = 1;
-
-    qtyInput.value = currentQty;
-
-}
-
-
-
-// Update Cart Quantity
-
-function updateCartQuantity(productId, amount) {
-
-    const item = cart.find(i => i.id === productId);
-
-    if (!item) return;
-
-    item.quantity += amount;
-
-    if (item.quantity < 1) item.quantity = 1;
-
-    
-
-    const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-
-    document.getElementById('cart-count').textContent = totalItems;
-
-    
-
-    renderCart();
-
-}
-
-
-
-// Display Product Details
-
-function viewDetails(productId) {
-
-    const p = currentProducts.find(item => item.id === productId);
-
-    if (!p) return;
-
-
-
-    const container = document.getElementById('product-detail-content');
-
-    if (!container) return;
-
-    
-
-    let mediaSection = `
-
-        <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden max-h-[300px]">
-
-            <img src="${p.imageUrl}" class="object-contain max-h-[260px] w-auto h-auto rounded-xl">
-
-        </div>`;
-
-        
-
-    if(p.videoUrl) {
-
-        mediaSection = `
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden max-h-[300px]">
-
-                    <img src="${p.imageUrl}" class="object-contain max-h-[260px] w-auto h-auto rounded-xl">
-
-                </div>
-
-                <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden max-h-[300px]">
-
-                    <video src="${p.videoUrl}" controls class="object-contain max-h-[260px] w-full rounded-xl bg-black"></video>
-
-                </div>
-
-            </div>
-
-        `;
-
-    }
-
-
-
-    container.innerHTML = `
-
-        ${mediaSection}
-
-        
-
-        <div class="border-b border-gray-800 pb-4">
-
-            <h2 class="text-3xl font-black mb-2">${p.title}</h2>
-
-            <p class="text-xl font-bold text-orange-400 mb-4">PKR ${p.price}</p>
-
-            <p class="text-gray-300 text-sm leading-relaxed">${p.description || 'No additional details provided.'}</p>
-
-            
-
-            <div class="flex items-center gap-3 my-5 bg-slate-950/30 p-3 rounded-xl border border-gray-850 w-fit">
-
-                <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Select Qty:</span>
-
-                <div class="flex items-center bg-slate-950 border border-gray-800 rounded-xl overflow-hidden">
-
-                    <button onclick="changeDetailQuantity(-1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold transition">
-
-                        <i class="fa-solid fa-minus text-[10px]"></i>
-
-                    </button>
-
-                    <input type="number" id="detail-quantity" value="1" min="1" readonly class="w-10 bg-transparent text-center text-xs font-black text-orange-500 outline-none">
-
-                    <button onclick="changeDetailQuantity(1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold transition">
-
-                        <i class="fa-solid fa-plus text-[10px]"></i>
-
-                    </button>
-
-                </div>
-
-            </div>
-
-
-
-            <div class="space-y-3 mt-4">
-
-                <button onclick="addToCart('${p.id}')" class="w-full bg-slate-800 hover:bg-slate-700 border border-gray-700 text-white font-bold py-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
-
-                    <i class="fa-solid fa-cart-shopping"></i> Add to Cart (COD Delivery)
-
-                </button>
-
-                <button onclick="instantBuyNow('${p.id}')" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
-
-                    <i class="fa-solid fa-bag-shopping"></i> Buy Now (COD)
-
-                </button>
-
-            </div>
-
-        </div>
-
-
-
-        <div class="bg-slate-950/40 border border-gray-800 rounded-2xl p-5 space-y-3">
-
-            <h3 class="text-sm font-black text-orange-400 uppercase tracking-wider flex items-center gap-2">
-
-                <i class="fa-solid fa-store"></i> Merchant Hub Profile
-
-            </h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-300">
-
-                <div><span class="text-gray-500 block mb-0.5">Store Address:</span> <span class="font-semibold text-white">${p.address || 'Not Available'}</span></div>
-
-                <div><span class="text-gray-500 block mb-0.5">Contact Merchant:</span> <span class="font-semibold text-white">${p.contactNumber || 'Not Available'}</span></div>
-
-            </div>
-
-        </div>
-
-    `;
-
-
-
-    switchTab('detail');
-
-}
-
-
-
-// Instant Buy Now
-
-function instantBuyNow(productId) {
-
-    const p = currentProducts.find(item => item.id === productId);
-
-    if(!p) return;
-
-    
-
-    const qtyInput = document.getElementById('detail-quantity');
-
-    const selectedQty = qtyInput ? parseInt(qtyInput.value) : 1;
-
-    
-
-    cart = [{ ...p, quantity: selectedQty }];
-
-    document.getElementById('cart-count').textContent = selectedQty;
-
-    document.getElementById('cart-count').classList.remove('hidden');
-
-    
-
-    switchTab('cart');
-
-    showNotification("Redirected to Instant Checkout Form!");
-
-}
-
-
-
-// Upload Product Form Submit Handler (INSTANT ONE-CLICK FIX)
-
-document.getElementById('product-upload-form').addEventListener('submit', async (e) => {
-
-    e.preventDefault();
-
-
-
-    const imageInput = document.getElementById('p-image-file');
-
-    const videoInput = document.getElementById('p-video-file');
-
-    
-
-    if (!imageInput || !imageInput.files || imageInput.files.length < 3) {
-
-        showNotification("Please select at least 3 product photos from gallery.", "error");
-
-        return;
-
-    }
-
-
-
-    // Submit button ke click karte hi fast processing shuru
-
-    showNotification("Processing media files...", "success");
-
-
-
-    try {
-
-        // Convert all selected images to base64 synchronously on form submit
-
-        const imagePromises = Array.from(imageInput.files).map(file => fileToDataURL(file));
-
-        const imagesBase64Array = await Promise.all(imagePromises);
-
-
-
-        // Convert video if available
-
-        let finalVideoBase64 = "";
-
-        if (videoInput && videoInput.files && videoInput.files[0]) {
-
-            finalVideoBase64 = await fileToDataURL(videoInput.files[0]);
-
-        }
-
-
-
-        const payload = {
-
-            title: document.getElementById('p-title').value,
-
-            price: document.getElementById('p-price').value,
-
-            description: document.getElementById('p-desc').value,
-
-            imageBase64: imagesBase64Array[0], // First image goes as primary view
-
-            videoBase64: finalVideoBase64,
-
-            transactionId: document.getElementById('p-txid').value,
-
-            paymentDetails: document.getElementById('p-payment-details').value,
-
-            address: document.getElementById('p-address').value,
-
-            contactNumber: document.getElementById('p-contact').value,
-
-            sellerEmail: document.getElementById('p-email').value
-
-        };
-
-
-
-        const res = await fetch('/api/products', {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify(payload)
-
-        });
-
-
-
-        const data = await res.json();
-
-        if(res.ok) {
-
-            showNotification("Submitted! Sent verification request to Admin.");
-
-            document.getElementById('product-upload-form').reset();
-
-            document.getElementById('img-preview-label').textContent = "Select 3 or More Images *";
-
-            document.getElementById('vid-preview-label').textContent = "Select Video (Optional)";
-
-            renderSellerListings();
-
-        } else {
-
-            showNotification(data.error || "Submission rejected", "error");
-
-        }
-
-    } catch(err) {
-
-        showNotification("Connection error or large file size.", "error");
-
-    }
-
-});
-
-
-
-// Render Seller Personal Listings
-
-async function renderSellerListings() {
-
-    const container = document.getElementById('seller-listings-container');
-
-    if (!container) return;
-
-    const sellerEmail = document.getElementById('p-email').value || (currentUser ? currentUser.email : '');
-
-    
-
-    if(!sellerEmail) {
-
-        container.innerHTML = `<p class="text-xs text-gray-500 text-center">Enter your verification email in the form above to retrieve your upload history.</p>`;
-
-        return;
-
-    }
-
-
-
-    try {
-
-        const res = await fetch(`/api/products/seller/${sellerEmail}`);
-
-        const list = await res.json();
-
-        container.innerHTML = '';
-
-
-
-        if(list.length === 0) {
-
-            container.innerHTML = `<p class="text-xs text-gray-500 text-center">No uploads recorded yet for this email.</p>`;
-
-            return;
-
-        }
-
-
-
-        list.forEach(p => {
-
-            const statusColor = p.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-
-            container.innerHTML += `
-
-                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex gap-4 items-center">
-
-                    <img src="${p.imageUrl}" class="w-16 h-16 rounded-xl object-cover">
-
-                    <div class="flex-grow min-w-0">
-
-                        <h4 class="font-extrabold text-sm truncate">${p.title}</h4>
-
-                        <p class="text-xs text-gray-400">PKR ${p.price}</p>
-
-                    </div>
-
-                    <span class="text-[9px] uppercase border px-2.5 py-1 rounded-full font-bold ${statusColor}">${p.status}</span>
-
-                </div>
-
-            `;
-
-        });
-
-    } catch(e) {}
-
-}
-
-
-
-// User Dashboard Profile Update
-
-async function updateProfilePanel() {
-
-    const authBox = document.getElementById('auth-box');
-
-    const profilePanel = document.getElementById('profile-panel');
-
-
-
-    if (!currentUser) {
-
-        if(authBox) authBox.classList.remove('hidden');
-
-        if(profilePanel) profilePanel.classList.add('hidden');
-
-        return;
-
-    }
-
-
-
-    if(authBox) authBox.classList.add('hidden');
-
-    if(profilePanel) profilePanel.classList.remove('hidden');
-
-
-
-    document.getElementById('panel-email').textContent = currentUser.email;
-
-    document.getElementById('panel-role').textContent = `${currentAccountType} account`;
-
-    document.getElementById('panel-username').textContent = currentUser.username || currentUser.email.split('@')[0];
-
-    
-
-    const avatarImg = document.getElementById('avatar-image-display');
-
-    const avatarText = document.getElementById('avatar-text');
-
-    
-
-    if (currentUser.profileImage) {
-
-        avatarImg.src = currentUser.profileImage;
-
-        avatarImg.classList.remove('hidden');
-
-        avatarText.classList.add('hidden');
-
-    } else {
-
-        avatarImg.classList.add('hidden');
-
-        avatarText.classList.remove('hidden');
-
-        avatarText.textContent = currentUser.email.substring(0, 2).toUpperCase();
-
-    }
-
-
-
-    const orderContainer = document.getElementById('orders-summary-container');
-
-    if (!orderContainer) return;
-
-    orderContainer.innerHTML = '';
-
-
-
-    try {
-
-        const res = await fetch(`/api/orders/user/${currentUser.email}`);
-
-        const orders = await res.json();
-
-
-
-        if (orders.length === 0) {
-
-            orderContainer.innerHTML = `<p class="text-xs text-gray-500 text-center">No orders recorded yet. Start shopping!</p>`;
-
-            return;
-
-        }
-
-
-
-        orders.forEach(o => {
-
-            orderContainer.innerHTML += `
-
-                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center">
-
-                    <div>
-
-                        <h5 class="font-extrabold text-sm">${o.title} (Qty: ${o.quantity || 1})</h5>
-
-                        <p class="text-xs text-gray-400">ID: ${o.id} • PKR ${o.price * (o.quantity || 1)}</p>
-
-                        <p class="text-[10px] text-gray-500 mt-1">Shipped to: ${o.buyerAddress}</p>
-
-                    </div>
-
-                    <span class="text-[10px] font-bold tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/30 px-3 py-1 rounded-full uppercase">${o.status}</span>
-
-                </div>
-
-            `;
-
-        });
-
-    } catch (e) {
-
-        orderContainer.innerHTML = `<p class="text-xs text-rose-500">Failed to sync orders.</p>`;
-
-    }
-
-}
-
-
-
-function triggerProfileImageUpload() {
-
-    document.getElementById('hidden-profile-image-input').click();
-
-}
-
-
-
-async function uploadProfileImageFile(input) {
-
-    const file = input.files[0];
-
-    if (!file || !currentUser) return;
-
-
-
-    const reader = new FileReader();
-
-    reader.onload = async function(e) {
-
-        const base64Data = e.target.result;
-
-        try {
-
-            const res = await fetch('/api/users/update', {
-
-                method: 'POST',
-
-                headers: { 'Content-Type': 'application/json' },
-
-                body: JSON.stringify({ email: currentUser.email, profileImage: base64Data })
-
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-
-                currentUser.profileImage = base64Data;
-
-                updateProfilePanel();
-
-                showNotification("Profile display picture updated!");
-
-            }
-
-        } catch (err) {
-
-            showNotification("Failed to upload profile picture.", "error");
-
-        }
-
-    };
-
-    reader.readAsDataURL(file);
-
-}
-
-
-
-async function editProfileUsername() {
-
-    if (!currentUser) return;
-
-    const currentName = document.getElementById('panel-username').textContent;
-
-    const newName = prompt("Enter your new Username:", currentName);
-
-    
-
-    if (newName === null || newName.trim() === "") return;
-
-
-
-    try {
-
-        const res = await fetch('/api/users/update', {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({ email: currentUser.email, username: newName.trim() })
-
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-
-            currentUser.username = data.user.username;
-
-            updateProfilePanel();
-
-            showNotification("Username updated successfully!");
-
-        }
-
-    } catch (err) {
-
-        showNotification("Failed to save changes.", "error");
-
-    }
-
-}
-
-
-
-// Authentication Logic
-
-async function handleAuth() {
-
-    const email = document.getElementById('auth-email').value;
-
-    const password = document.getElementById('auth-password').value;
-
-
-
-    if (!email || !password) {
-
-        showNotification("Please fill out complete account parameters.", "error");
-
-        return;
-
-    }
-
-
-
-    try {
-
-        const res = await fetch('/api/users/login', {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({ email })
-
-        });
-
-        const data = await res.json();
-
-        if(data.success) {
-
-            currentUser = data.user;
-
-            showNotification(`Welcome back, ${currentUser.username || email}!`);
-
-            updateProfilePanel();
-
-        }
-
-    } catch (e) {
-
-        showNotification("Authentication Server Down", "error");
-
-    }
-
-}
-
-
-
-function logout() {
-
-    currentUser = null;
-
-    const badge = document.getElementById('user-status-badge');
-
-    if (badge) badge.classList.add('hidden');
-
-    showNotification("Logged out successfully.");
-
-    updateProfilePanel();
-
-    switchTab('home');
-
-}
-
-
-
-// Message Desk Simulation
-
-function sendMessage() {
-
-    const input = document.getElementById('chat-input');
-
-    const box = document.getElementById('chat-box');
-
-    
-
-    if(!input || !input.value.trim()) return;
-
-
-
-    box.innerHTML += `
-
-        <div class="bg-orange-500 text-slate-950 p-3 rounded-2xl max-w-[80%] self-end ml-auto font-semibold">
-
-            ${input.value}
-
-        </div>
-
-    `;
-
-    
-
-    const query = input.value.toLowerCase();
-
-    input.value = '';
-
-
-
-    setTimeout(() => {
-
-        let reply = "Your message has been routed to MT Central Command. Our live representative will respond shortly.";
-
-        if(query.includes("order") || query.includes("delivery")) {
-
-            reply = "To track orders, simply click the 'Account' button down in the dock to view live processing statuses.";
-
-        } else if(query.includes("publish") || query.includes("verify") || query.includes("50")) {
-
-            reply = "Publishing verification is automated. Please ensure you sent the requested fees and typed the exact TxID in the Merchant Dashboard.";
-
-        }
-
-
-
-        box.innerHTML += `
-
-            <div class="bg-slate-800 p-3 rounded-2xl max-w-[80%] text-gray-200">
-
-                ${reply}
-
-            </div>
-
-        `;
-
-        box.scrollTop = box.scrollHeight;
-
-    }, 1000);
-
-}
-
-
-
-// Shopping Cart Controller
-
-function addToCart(productId) {
-
-    const p = currentProducts.find(item => item.id === productId);
-
-    if(!p) return;
-
-
-
-    const qtyInput = document.getElementById('detail-quantity');
-
-    const selectedQty = qtyInput ? parseInt(qtyInput.value) : 1;
-
-
-
-    const existing = cart.find(item => item.id === productId);
-
-    if(existing) {
-
-        existing.quantity += selectedQty;
-
-    } else {
-
-        cart.push({ ...p, quantity: selectedQty });
-
-    }
-
-
-
-    const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-
-    document.getElementById('cart-count').textContent = totalItems;
-
-    document.getElementById('cart-count').classList.remove('hidden');
-
-    showNotification(`Added ${p.title} (${selectedQty}x) to checkout cart!`);
-
-}
-
-
-
-function renderCart() {
-
-    const container = document.getElementById('cart-items');
-
-    if (!container) return;
-
-    container.innerHTML = '';
-
-
-
-    if (cart.length === 0) {
-
-        container.innerHTML = `<p class="text-center text-gray-500 py-8">Your shopping basket is empty.</p>`;
-
-        return;
-
-    }
-
-
-
-    cart.forEach(item => {
-
-        container.innerHTML += `
-
-            <div class="bg-slate-900/60 p-4 rounded-2xl border border-gray-850 flex gap-4 items-center justify-between">
-
-                <div class="flex gap-4 items-center">
-
-                    <img src="${item.imageUrl}" class="w-12 h-12 rounded-xl object-cover">
-
-                    <div>
-
-                        <h4 class="font-extrabold text-sm">${item.title}</h4>
-
-                        <p class="text-xs text-gray-400 mb-1">Price: PKR ${item.price}</p>
-
-                        <div class="flex items-center bg-slate-950 border border-gray-800 rounded-lg overflow-hidden w-fit">
-
-                            <button onclick="updateCartQuantity('${item.id}', -1)" class="px-2 py-0.5 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">-</button>
-
-                            <span class="px-3 text-xs font-bold text-orange-400">${item.quantity}</span>
-
-                            <button onclick="updateCartQuantity('${item.id}', 1)" class="px-2 py-0.5 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">+</button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <button onclick="removeFromCart('${item.id}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button>
-
-            </div>
-
-        `;
-
-    });
-
-}
-
-
-
-function removeFromCart(id) {
-
-    cart = cart.filter(item => item.id !== id);
-
-    if(cart.length === 0) {
-
-        document.getElementById('cart-count').classList.add('hidden');
-
-    } else {
-
-        const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-
-        document.getElementById('cart-count').textContent = totalItems;
-
-    }
-
-    renderCart();
-
-}
-
-
-
-async function checkout() {
-
-    if(cart.length === 0) {
-
-        showNotification("Your cart is completely empty.", "error");
-
-        return;
-
-    }
-
-
-
-    const payload = {
-
-        items: cart,
-
-        buyerName: document.getElementById('buyer-name').value,
-
-        buyerEmail: document.getElementById('buyer-email').value,
-
-        buyerPhone: document.getElementById('buyer-phone').value,
-
-        buyerAddress: document.getElementById('buyer-address').value
-
-    };
-
-
-
-    if(!payload.buyerName || !payload.buyerEmail || !payload.buyerPhone || !payload.buyerAddress) {
-
-        showNotification("Please fill the shipping data correctly.", "error");
-
-        return;
-
-    }
-
-
-
-    try {
-
-        const res = await fetch('/api/orders', {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify(payload)
-
-        });
-
-
-
-        if(res.ok) {
-
-            showNotification("Success! Ordered via Cash on Delivery (COD).");
-
-            cart = [];
-
-            document.getElementById('cart-count').classList.add('hidden');
-
-            renderCart();
-
-            switchTab('home');
-
-        } else {
-
-            showNotification("Order submission failed.", "error");
-
-        }
-
-    } catch(e) {
-
-        showNotification("Network timeout during checkout.", "error");
-
-    }
-
-}
-
-
-
-window.onload = () => {
-
-    loadProducts();
-
+// ==========================================
+// 🚀 MT-STORE CORE GLOBAL FRONTEND ARCHITECTURE
+// ==========================================
+
+// Application Reactive Global Application Memory Cache
+const STATE = {
+    user: null,
+    cart: [],
+    products: [],
+    uploadedImagesBase64: [], // 🖼️ Multiple images storage array
+    activeTab: 'home'
 };
 
-main.js
+// ==========================================
+// 🔐 SESSION SECURITY & USER SYNC PERSISTENCE
+// ==========================================
+function initSessionState() {
+    const cachedUser = localStorage.getItem('mt_store_user');
+    const cachedCart = localStorage.getItem('mt_store_cart');
 
+    if (cachedUser) {
+        try {
+            STATE.user = JSON.parse(cachedUser);
+            setupUserInterfaceForLoggedSession();
+        } catch (e) {
+            clearSessionCache();
+        }
+    }
+
+    if (cachedCart) {
+        try { STATE.cart = JSON.parse(cachedCart); } catch (e) { STATE.cart = []; }
+    }
+
+    // Bind Core System Actions
+    bindEventInterceptors();
+    fetchActiveApprovedProducts();
+    switchClientInterfaceTab(STATE.activeTab);
+    updateDynamicVisualCartCounter();
+}
+
+function clearSessionCache() {
+    localStorage.removeItem('mt_store_user');
+    STATE.user = null;
+    window.location.reload();
+}
+
+function setupUserInterfaceForLoggedSession() {
+    const authTrigger = document.getElementById('auth-action-trigger');
+    const profileBadge = document.getElementById('user-profile-widget');
+    const profileEmailText = document.getElementById('profile-display-email');
+    const usernameField = document.getElementById('account-username-field');
+
+    if (authTrigger) authTrigger.classList.add('hidden-element-state');
+    if (profileBadge) profileBadge.classList.remove('hidden-element-state');
+    if (profileEmailText) profileEmailText.textContent = STATE.user.email;
+    if (usernameField) usernameField.value = STATE.user.username || '';
+
+    // Synchronize account unique orders dashboard pipeline
+    renderAccountOrdersPipelineDashboard();
+    renderVendorEnrolledWorkspaceDashboard();
+}
+
+// ==========================================
+// 🛠️ EVENT CONTROLLER INTERCEPTORS INTERACTION
+// ==========================================
+function bindEventInterceptors() {
+    // Authentication Access Flow Interception
+    const loginForm = document.getElementById('app-login-action-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailInput = document.getElementById('auth-submit-email-field').value.trim();
+            if (!emailInput) return alert('Please enter a valid email address.');
+
+            try {
+                const response = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailInput })
+                });
+                const dynamicPayload = await response.json();
+                if (dynamicPayload.success) {
+                    STATE.user = dynamicPayload.user;
+                    localStorage.setItem('mt_store_user', JSON.stringify(STATE.user));
+                    setupUserInterfaceForLoggedSession();
+                    alert(`Welcome back, ${STATE.user.username}!`);
+                    switchClientInterfaceTab('home');
+                }
+            } catch (err) {
+                alert('Authentication service rejected processing payload request.');
+            }
+        });
+    }
+
+    // Multiple Images Process Framework Stream
+    const fileMultiInput = document.getElementById('vendor-item-multiple-images');
+    if (fileMultiInput) {
+        fileMultiInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            const previewContainer = document.getElementById('images-upload-preview-row');
+            if (previewContainer) previewContainer.innerHTML = '';
+            STATE.uploadedImagesBase64 = [];
+
+            files.forEach(file => {
+                const streamReader = new FileReader();
+                streamReader.onloadend = () => {
+                    STATE.uploadedImagesBase64.push(streamReader.result);
+                    
+                    // Render image block directly inside layout gallery array container
+                    if (previewContainer) {
+                        const imgNode = document.createElement('img');
+                        imgNode.src = streamReader.result;
+                        imgNode.className = "w-20 h-20 object-cover rounded-lg border border-slate-700 shadow-sm";
+                        previewContainer.appendChild(imgNode);
+                    }
+                };
+                streamReader.readAsDataURL(file);
+            });
+        });
+    }
+
+    // New Store Product Submission Workflow Pipeline
+    const productListingForm = document.getElementById('vendor-publish-listing-form');
+    if (productListingForm) {
+        productListingForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!STATE.user) return alert('Session authorization required to execute action. Please log in.');
+            if (STATE.uploadedImagesBase64.length === 0) return alert('Please upload at least one image asset for production display.');
+
+            const payloadFields = {
+                title: document.getElementById('listing-title').value,
+                price: parseFloat(document.getElementById('listing-price').value),
+                description: document.getElementById('listing-desc').value,
+                category: document.getElementById('listing-category').value,
+                imageBase64Array: STATE.uploadedImagesBase64, // 🖼️ Array parameter injected safely
+                paymentDetails: document.getElementById('listing-payment-info').value,
+                transactionId: document.getElementById('listing-txid').value,
+                address: document.getElementById('listing-address').value,
+                contactNumber: document.getElementById('listing-phone').value,
+                sellerEmail: STATE.user.email
+            };
+
+            try {
+                const submissionResponse = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payloadFields)
+                });
+                const trackingStatus = await submissionResponse.json();
+                if (submissionResponse.ok) {
+                    alert('Submission received successfully! Listing pending administrator operational approval.');
+                    productListingForm.reset();
+                    if (document.getElementById('images-upload-preview-row')) {
+                        document.getElementById('images-upload-preview-row').innerHTML = '';
+                    }
+                    renderVendorEnrolledWorkspaceDashboard();
+                    switchClientInterfaceTab('seller-workspace');
+                } else {
+                    alert(`Submission failed: ${trackingStatus.error}`);
+                }
+            } catch (err) {
+                alert('Connection tracking submission server error.');
+            }
+        });
+    }
+}
+
+// ==========================================
+// 🛒 DYNAMIC PRODUCTS & VIEW DETAILS INJECTION
+// ==========================================
+async function fetchActiveApprovedProducts() {
+    try {
+        const payload = await fetch('/api/products');
+        STATE.products = await payload.json();
+        renderProductsCatalogDisplayGrid();
+    } catch (e) {
+        console.error("Catalog retrieval stream offline.", e);
+    }
+}
+
+function renderProductsCatalogDisplayGrid() {
+    const structuralContainer = document.getElementById('catalog-products-dynamic-view');
+    if (!structuralContainer) return;
+
+    if (STATE.products.length === 0) {
+        structuralContainer.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400">No products live inside store catalog at this time.</div>`;
+        return;
+    }
+
+    structuralContainer.innerHTML = STATE.products.map(prod => `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-[1.02] flex flex-col justify-between">
+            <img src="${prod.imageUrls && prod.imageUrls[0] ? prod.imageUrls[0] : (prod.imageUrl || '')}" class="w-full h-48 object-cover bg-slate-950" alt="${prod.title}"/>
+            <div class="p-5 flex-1 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-amber-500 uppercase tracking-wider">${prod.category}</span>
+                    <h3 class="text-lg font-bold text-white mt-1 line-clamp-1">${prod.title}</h3>
+                    <p class="text-sm text-slate-400 mt-2 line-clamp-2">${prod.description || 'No descriptive context provided.'}</p>
+                </div>
+                <div class="mt-4">
+                    <div class="text-xl font-black text-emerald-400">PKR ${prod.price}</div>
+                    <button onclick="injectProductDeepDetailsSheetModal('${prod.id}')" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 rounded-xl transition-colors">
+                        View Complete Details
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Labeled Multi-Image Media Carousel Modal View Matrix
+window.injectProductDeepDetailsSheetModal = function(productId) {
+    const targetItem = STATE.products.find(p => p.id === productId.toString());
+    if (!targetItem) return;
+
+    const overlayModalNode = document.createElement('div');
+    overlayModalNode.id = "global-dynamic-details-modal";
+    overlayModalNode.className = "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto";
+    
+    // Compile asset collections safely
+    const collectionImages = targetItem.imageUrls && targetItem.imageUrls.length > 0 ? targetItem.imageUrls : [targetItem.imageUrl];
+    
+    const carouselThumbnailsHtml = collectionImages.map((src, index) => `
+        <img src="${src}" onclick="document.getElementById('primary-modal-hero-viewer').src='${src}'" 
+             class="w-16 h-16 object-cover rounded-lg border border-slate-700 cursor-pointer hover:border-amber-500 transition-all bg-slate-900" alt="Thumb-${index}" />
+    `).join('');
+
+    overlayModalNode.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in text-slate-100">
+            <div class="sticky top-0 bg-slate-900 p-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="text-xl font-extrabold text-white truncate">${targetItem.title}</h2>
+                <button onclick="document.getElementById('global-dynamic-details-modal').remove()" class="text-slate-400 hover:text-white text-2xl font-bold p-1">&times;</button>
+            </div>
+            <div class="p-6 space-y-6">
+                <!-- 🖼️ Multi-Image Display System Context Framework Block -->
+                <div class="space-y-3">
+                    <img id="primary-modal-hero-viewer" src="${collectionImages[0]}" class="w-full h-80 object-contain bg-slate-950 rounded-xl border border-slate-800 shadow-inner" />
+                    <div class="flex items-center gap-2 overflow-x-auto pb-2">${carouselThumbnailsHtml}</div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Description</h4>
+                            <p class="text-sm text-slate-300 mt-1 whitespace-pre-line">${targetItem.description || 'No description asset details mapped.'}</p>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                            <h4 class="text-sm font-bold text-amber-500">💼 Seller Contact Information</h4>
+                            <div class="text-xs space-y-1 text-slate-400">
+                                <div><strong class="text-slate-200">Email Reference:</strong> ${targetItem.sellerEmail}</div>
+                                <div><strong class="text-slate-200">Mobile Hotlink:</strong> ${targetItem.contactNumber || 'N/A'}</div>
+                                <div><strong class="text-slate-200">Operational Hub:</strong> ${targetItem.address || 'N/A'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                        <div>
+                            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Purchase Assessment Value</div>
+                            <div class="text-3xl font-black text-emerald-400 mt-1">PKR ${targetItem.price}</div>
+                            <div class="mt-4 p-3 bg-slate-900 rounded-lg text-xs text-slate-400 border border-slate-800">
+                                🔒 Secured processing via platform escrow guarantees.
+                            </div>
+                        </div>
+                        <button onclick="addItemToOperationalCart('${targetItem.id}'); document.getElementById('global-dynamic-details-modal').remove();" 
+                                class="w-full mt-6 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl shadow-lg transition-colors">
+                            Add Item To Shopping Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlayModalNode);
+};
+
+// ==========================================
+// 📦 TRANSACTION ORDER MANAGEMENT TRACKING SYSTEM
+// ==========================================
+async function renderAccountOrdersPipelineDashboard() {
+    const structuralContainer = document.getElementById('account-orders-tracking-pipeline');
+    if (!structuralContainer || !STATE.user) return;
+
+    try {
+        const networkResponse = await fetch(`/api/orders/user/${STATE.user.email}`);
+        const userOrders = await networkResponse.json();
+
+        if (userOrders.length === 0) {
+            structuralContainer.innerHTML = `<div class="text-center py-6 text-slate-500 text-sm">You have not initiated placement orders yet.</div>`;
+            return;
+        }
+
+        structuralContainer.innerHTML = userOrders.map(ord => {
+            // Processing status display with cancellation interface button control
+            const displayCancellationAction = ord.status === 'Processing' 
+                ? `<button onclick="triggerOrderCancellationTransactionPipeline('${ord.id}')" 
+                           class="px-4 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold rounded-lg transition-all shadow-sm">
+                       Cancel Order
+                   </button>` 
+                : '';
+
+            const statusDesignColor = ord.status === 'Cancelled' ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : 
+                                      ord.status === 'Processing' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20 animate-pulse' : 
+                                      'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
+
+            return `
+                <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <img src="${ord.productImage || ''}" class="w-12 h-12 object-cover rounded-lg bg-slate-900 border border-slate-800 flex-shrink-0" onerror="this.src='https://placehold.co/100'" />
+                        <div>
+                            <div class="text-xs font-mono text-slate-500">${ord.id}</div>
+                            <div class="text-sm font-bold text-white line-clamp-1">${ord.title}</div>
+                            <div class="text-xs text-slate-400 mt-0.5">Quantity: ${ord.quantity} &bull; Total: <span class="text-emerald-400 font-medium">PKR ${ord.price * ord.quantity}</span></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                        <span class="px-2.5 py-1 text-xs font-bold rounded-md border ${statusDesignColor}">
+                            ${ord.status}
+                        </span>
+                        ${displayCancellationAction}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        structuralContainer.innerHTML = `<div class="text-center py-4 text-rose-400 text-xs">Failed to connect order query synchronization engine.</div>`;
+    }
+}
+
+window.triggerOrderCancellationTransactionPipeline = async function(orderId) {
+    if (!confirm(`Are you certain you wish to cancel Order reference protection sequence: ${orderId}?`)) return;
+
+    try {
+        const triggerExecutionResponse = await fetch(`/api/orders/cancel/${orderId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const statePayload = await triggerExecutionResponse.json();
+
+        if (triggerExecutionResponse.ok && statePayload.success) {
+            alert('Order cancelled successfully. Cancellation alert notifications transmitted.');
+            renderAccountOrdersPipelineDashboard();
+        } else {
+            alert(`Cancellation error response state: ${statePayload.error}`);
+        }
+    } catch (err) {
+        alert('Network handling infrastructure failure processing cancellation transmission pipeline.');
+    }
+};
+
+// ==========================================
+// 💼 VENDOR MANAGEMENT ENROLLMENT FLOW WORKSPACE
+// ==========================================
+async function renderVendorEnrolledWorkspaceDashboard() {
+    const structuralContainer = document.getElementById('vendor-products-portfolio-grid');
+    if (!structuralContainer || !STATE.user) return;
+
+    try {
+        const response = await fetch(`/api/products/seller/${STATE.user.email}`);
+        const sellerProducts = await response.json();
+
+        if (sellerProducts.length === 0) {
+            structuralContainer.innerHTML = `
+                <div class="col-span-full text-center py-8 text-slate-500 text-sm">
+                    No active assets published under this specific email entity profile context yet.
+                </div>`;
+            return;
+        }
+
+        structuralContainer.innerHTML = sellerProducts.map(prod => `
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <img src="${prod.imageUrls && prod.imageUrls[0] ? prod.imageUrls[0] : (prod.imageUrl || '')}" class="w-12 h-12 object-cover rounded-md bg-slate-900 border border-slate-800" />
+                    <div>
+                        <h4 class="text-sm font-bold text-white line-clamp-1">${prod.title}</h4>
+                        <div class="text-xs text-slate-400">PKR ${prod.price}</div>
+                    </div>
+                </div>
+                <span class="px-2 py-0.5 text-xs font-semibold rounded ${prod.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
+                    ${prod.status}
+                </span>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error("Seller dashboard fetch error.", e);
+    }
+}
+
+// ==========================================
+// 🛒 CORE CART LOGIC ENGINE
+// ==========================================
+window.addItemToOperationalCart = function(productId) {
+    const matchingProduct = STATE.products.find(p => p.id === productId.toString());
+    if (!matchingProduct) return;
+
+    const existingCartEntry = STATE.cart.find(item => item.id === productId.toString());
+    if (existingCartEntry) {
+        existingCartEntry.quantity += 1;
+    } else {
+        STATE.cart.push({
+            id: matchingProduct.id,
+            title: matchingProduct.title,
+            price: matchingProduct.price,
+            quantity: 1
+        });
+    }
+
+    localStorage.setItem('mt_store_cart', JSON.stringify(STATE.cart));
+    updateDynamicVisualCartCounter();
+    alert(`"${matchingProduct.title}" added to your shopping cart.`);
+};
+
+function updateDynamicVisualCartCounter() {
+    const totalsBadge = document.getElementById('cart-badge-counter-value');
+    if (!totalsBadge) return;
+    const totalCount = STATE.cart.reduce((sum, item) => sum + item.quantity, 0);
+    totalsBadge.textContent = totalCount;
+}
+
+// ==========================================
+// 📑 CLIENT ENGINE UI TABS NAVIGATION MATRIX
+// ==========================================
+window.switchClientInterfaceTab = function(targetTabId) {
+    STATE.activeTab = targetTabId;
+    
+    // Toggle active tab sections across layout layers views
+    document.querySelectorAll('.app-navigation-panel-layer').forEach(layer => {
+        layer.classList.add('hidden-element-state');
+    });
+
+    const activeTargetLayoutLayer = document.getElementById(`view-pane-layer-${targetTabId}`);
+    if (activeTargetLayoutLayer) {
+        activeTargetLayoutLayer.classList.remove('hidden-element-state');
+    }
+
+    // Refresh metrics context frames dynamically when target screens focus
+    if (targetTabId === 'profile') {
+        renderAccountOrdersPipelineDashboard();
+    } else if (targetTabId === 'seller-workspace') {
+        renderVendorEnrolledWorkspaceDashboard();
+    }
+};
+
+// Initialize Application Lifecycle Flow Hooks
+document.addEventListener('DOMContentLoaded', initSessionState);
