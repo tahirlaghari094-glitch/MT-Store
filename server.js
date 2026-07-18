@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
 const app = express();
 
@@ -14,23 +14,30 @@ const ADMIN_EMAIL = 'lagharitahir08@gmail.com';
 const LIVE_DOMAIN = 'https://mt-store-sandy.vercel.app';
 
 // ==========================================
-// 📧 RESEND EMAIL CONFIGURATION
+// 📧 NODEMAILER GMAIL CONFIGURATION
 // ==========================================
-const resend = new Resend('re_MUyzku5K_J3zJ6HiYQwwYgZo8niMkxpUX');
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_USER, // Vercel Environment Variable
+        pass: process.env.GMAIL_PASS  // Vercel Environment Variable (App Password)
+    }
+});
 
 const sendHtmlEmail = async (to, subject, htmlContent) => {
     if (!to) return;
     try {
-        const data = await resend.emails.send({
-            from: 'MT Store <onboarding@resend.dev>',
+        const mailOptions = {
+            from: `"MT Store" <${process.env.GMAIL_USER}>`,
             to: to,
             subject: subject,
             html: htmlContent
-        });
-        console.log("🚀 Email Sent Successfully via Resend:", data);
+        };
+        const data = await transporter.sendMail(mailOptions);
+        console.log("🚀 Email Sent Successfully via Gmail:", data.messageId);
         return data;
     } catch (error) {
-        console.log("❌ Resend Email Sending Failed: ", error);
+        console.log("❌ Gmail Email Sending Failed: ", error);
         throw error;
     }
 };
