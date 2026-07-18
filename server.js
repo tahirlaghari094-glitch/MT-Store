@@ -1,661 +1,339 @@
-let currentProducts = [];
-let cart = [];
-let currentUser = null;
-let currentAccountType = 'common'; // common or seller
+const express = require('express');
+const path = require('path');
+const mongoose = require('mongoose');
+const nodemailer = require('nodemailer'); // 🚀 Nodemailer integrated
 
-// Base64 Media Storage variables
-let uploadedImagesArray = [];
-let uploadedVideoBase64 = "";
+const app = express();
 
-// Custom Glass-morphic Toast Notification Engine
-function showNotification(message, type = 'success') {
-    const toast = document.getElementById('toast-notification');
-    const msgText = document.getElementById('toast-message');
-    const icon = document.getElementById('toast-icon');
+// Increase payload limits for Base64 assets
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-    if (!toast || !msgText || !icon) return;
-    msgText.textContent = message;
-    
-    if (type === 'error') {
-        toast.classList.remove('border-emerald-500/30', 'text-emerald-400');
-        toast.classList.add('border-rose-500/30', 'text-rose-400');
-        icon.className = "fa-solid fa-circle-exclamation text-xl text-rose-400";
-    } else {
-        toast.classList.remove('border-rose-500/30', 'text-rose-400');
-        toast.classList.add('border-emerald-500/30', 'text-emerald-400');
-        icon.className = "fa-solid fa-circle-check text-xl text-emerald-400";
-    }
+const PORT = process.env.PORT || 5000;
+const ADMIN_EMAIL = 'lagharitahir08@gmail.com';
+const LIVE_DOMAIN = 'https://mt-store-sandy.vercel.app';
 
-    toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
-    toast.classList.add('opacity-100', 'translate-y-0');
+// ==========================================
+// 📧 NODEMAILER GMAIL CONFIGURATION
+// ==========================================
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+    },
+});
 
-    setTimeout(() => {
-        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
-        toast.classList.remove('opacity-100', 'translate-y-0');
-    }, 4500);
-}
-
-// 3 Dots Dynamic Dropdown Menu
-function toggleDropdown() {
-    document.getElementById('accountDropdown').classList.toggle('hidden');
-}
-
-function setAccountType(type) {
-    currentAccountType = type;
-    toggleDropdown();
-    
-    const badge = document.getElementById('user-status-badge');
-    if (badge) {
-        badge.textContent = `${type} profile`;
-        badge.classList.remove('hidden');
-    }
-
-    if(type === 'seller') {
-        showNotification("Switched to Merchant Account dashboard.");
-        switchTab('seller');
-    } else {
-        showNotification("Switched to Common Buyer Account.");
-        switchTab('home');
-    }
-    
-    updateProfilePanel();
-}
-
-// Dynamic Tabs Controller
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
-    
-    if (tabName === 'home') {
-        document.getElementById('home-view').classList.add('active');
-        loadProducts();
-    }
-    else if (tabName === 'detail') document.getElementById('detail-view').classList.add('active');
-    else if (tabName === 'seller') {
-        document.getElementById('seller-view').classList.add('active');
-        renderSellerListings();
-    }
-    else if (tabName === 'cart') {
-        document.getElementById('cart-view').classList.add('active');
-        renderCart();
-    }
-    else if (tabName === 'account') {
-        document.getElementById('account-view').classList.add('active');
-        updateProfilePanel();
-    }
-    else if (tabName === 'messages') {
-        document.getElementById('messages-view').classList.add('active');
-    }
-}
-
-// Helper Function to convert file to Base64 instantly
-function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(e);
-        reader.readAsDataURL(file);
-    });
-}
-
-// Gallery Media Label Updater
-async function previewMedia(input, labelId) {
-    if(input.id === 'p-image-file') {
-        const files = input.files;
-        if (files.length < 3) {
-            showNotification('Please select at least 3 images.', 'error');
-            input.value = '';
-            document.getElementById(labelId).innerText = 'Select 3 or More Images *';
-            return;
-        }
-        document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
-    } else if (input.id === 'p-video-file') {
-        const file = input.files[0];
-        if (!file) return;
-        document.getElementById(labelId).textContent = "Video Selected ✓";
-    }
-}
-
-// Fetch and Render Approved Products
-async function loadProducts() {
+const sendHtmlEmail = async (to, subject, htmlContent) => {
+    if (!to) return;
     try {
-        const response = await fetch('/api/products');
-        currentProducts = await response.json();
-        const grid = document.getElementById('product-grid');
-        if (!grid) return;
-        grid.innerHTML = '';
-
-        if(currentProducts.length === 0) {
-            grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No active products on the store. Open Account/Menu to upload items.</p>`;
-            return;
-        }
-
-        currentProducts.forEach(product => {
-            grid.innerHTML += `
-                <div class="bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
-                    <img src="${product.imageUrl}" alt="${product.title}" class="w-full h-44 object-cover">
-                    <div class="p-4">
-                        <h3 class="font-extrabold text-sm truncate">${product.title}</h3>
-                        <p class="text-xs text-gray-400 mt-1 truncate">${product.description || 'Verified Quality'}</p>
-                        <div class="flex items-center justify-between mt-3">
-                            <span class="text-sm font-black text-orange-400">PKR ${product.price}</span>
-                            <span class="text-[8px] bg-slate-800 border border-gray-700 text-gray-400 px-2 py-1 rounded-full font-bold uppercase">COD</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-    } catch (e) {
-        showNotification("Failed to connect to MT-Server database.", "error");
-    }
-}
-
-// Quantity Counter Engine Functions
-function changeDetailQuantity(amount) {
-    const qtyInput = document.getElementById('detail-quantity');
-    if (!qtyInput) return;
-    let currentQty = parseInt(qtyInput.value) || 1;
-    currentQty += amount;
-    if (currentQty < 1) currentQty = 1;
-    qtyInput.value = currentQty;
-}
-
-// Update Cart Quantity
-function updateCartQuantity(productId, amount) {
-    const item = cart.find(i => i.id === productId);
-    if (!item) return;
-    item.quantity += amount;
-    if (item.quantity < 1) item.quantity = 1;
-    
-    const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-    document.getElementById('cart-count').textContent = totalItems;
-    
-    renderCart();
-}
-
-// Display Product Details
-function viewDetails(productId) {
-    const p = currentProducts.find(item => item.id === productId);
-    if (!p) return;
-
-    const container = document.getElementById('product-detail-content');
-    if (!container) return;
-    
-    let imageGalleryHtml = `<img src="${p.imageUrl}" class="object-contain max-h-[260px] w-auto h-auto rounded-xl">`;
-    if(p.imageUrls && p.imageUrls.length > 1) {
-        imageGalleryHtml = `
-            <div class="w-full flex flex-col gap-2">
-                <img id="main-detail-preview" src="${p.imageUrls[0]}" class="object-contain max-h-[240px] mx-auto rounded-xl">
-                <div class="flex gap-2 justify-center overflow-x-auto py-1">
-                    ${p.imageUrls.map(img => `<img src="${img}" onclick="document.getElementById('main-detail-preview').src='${img}'" class="w-12 h-12 object-cover rounded-md border border-gray-700 hover:border-orange-500 cursor-pointer transition">`).join('')}
-                </div>
-            </div>
-        `;
-    }
-
-    let mediaSection = `
-        <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden">
-            ${imageGalleryHtml}
-        </div>`;
-        
-    if(p.videoUrl) {
-        mediaSection = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden">
-                    ${imageGalleryHtml}
-                </div>
-                <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden max-h-[300px]">
-                    <video src="${p.videoUrl}" controls class="object-contain max-h-[260px] w-full rounded-xl bg-black"></video>
-                </div>
-            </div>
-        `;
-    }
-
-    container.innerHTML = `
-        ${mediaSection}
-        
-        <div class="border-b border-gray-800 pb-4">
-            <h2 class="text-3xl font-black mb-2">${p.title}</h2>
-            <p class="text-xl font-bold text-orange-400 mb-4">PKR ${p.price}</p>
-            <p class="text-gray-300 text-sm leading-relaxed">${p.description || 'No additional details provided.'}</p>
-            
-            <div class="flex items-center gap-3 my-5 bg-slate-950/30 p-3 rounded-xl border border-gray-850 w-fit">
-                <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Select Qty:</span>
-                <div class="flex items-center bg-slate-950 border border-gray-800 rounded-xl overflow-hidden">
-                    <button onclick="changeDetailQuantity(-1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold transition">
-                        <i class="fa-solid fa-minus text-[10px]"></i>
-                    </button>
-                    <input type="number" id="detail-quantity" value="1" min="1" readonly class="w-10 bg-transparent text-center text-xs font-black text-orange-500 outline-none">
-                    <button onclick="changeDetailQuantity(1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold transition">
-                        <i class="fa-solid fa-plus text-[10px]"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="space-y-3 mt-4">
-                <button onclick="addToCart('${p.id}')" class="w-full bg-slate-800 hover:bg-slate-700 border border-gray-700 text-white font-bold py-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-cart-shopping"></i> Add to Cart (COD Delivery)
-                </button>
-                <button onclick="instantBuyNow('${p.id}')" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-bag-shopping"></i> Buy Now (COD)
-                </button>
-            </div>
-        </div>
-
-        <div class="bg-slate-950/40 border border-gray-800 rounded-2xl p-5 space-y-3">
-            <h3 class="text-sm font-black text-orange-400 uppercase tracking-wider flex items-center gap-2">
-                <i class="fa-solid fa-store"></i> Merchant Hub Profile
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-300">
-                <div><span class="text-gray-500 block mb-0.5">Store Address:</span> <span class="font-semibold text-white">${p.address || 'Not Available'}</span></div>
-                <div><span class="text-gray-500 block mb-0.5">Contact Merchant:</span> <span class="font-semibold text-white">${p.contactNumber || 'Not Available'}</span></div>
-            </div>
-        </div>
-    `;
-
-    switchTab('detail');
-}
-
-// Instant Buy Now
-function instantBuyNow(productId) {
-    const p = currentProducts.find(item => item.id === productId);
-    if(!p) return;
-    
-    const qtyInput = document.getElementById('detail-quantity');
-    const selectedQty = qtyInput ? parseInt(qtyInput.value) : 1;
-    
-    cart = [{ ...p, quantity: selectedQty }];
-    document.getElementById('cart-count').textContent = selectedQty;
-    document.getElementById('cart-count').classList.remove('hidden');
-    
-    switchTab('cart');
-    showNotification("Redirected to Instant Checkout Form!");
-}
-
-// Upload Product Form Submit Handler (INSTANT ONE-CLICK FIX)
-document.getElementById('product-upload-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const imageInput = document.getElementById('p-image-file');
-    const videoInput = document.getElementById('p-video-file');
-    
-    if (!imageInput || !imageInput.files || imageInput.files.length < 3) {
-        showNotification("Please select at least 3 product photos from gallery.", "error");
-        return;
-    }
-
-    showNotification("Processing media files...", "success");
-
-    try {
-        // Convert all selected images to base64 array
-        const imagePromises = Array.from(imageInput.files).map(file => fileToDataURL(file));
-        const imagesBase64Array = await Promise.all(imagePromises);
-
-        // Convert video if available
-        let finalVideoBase64 = "";
-        if (videoInput && videoInput.files && videoInput.files[0]) {
-            finalVideoBase64 = await fileToDataURL(videoInput.files[0]);
-        }
-
-        const payload = {
-            title: document.getElementById('p-title').value,
-            price: document.getElementById('p-price').value,
-            description: document.getElementById('p-desc').value,
-            imageBase64: imagesBase64Array[0], 
-            imageUrls: imagesBase64Array, // Send full array to backend
-            videoBase64: finalVideoBase64,
-            transactionId: document.getElementById('p-txid').value,
-            paymentDetails: document.getElementById('p-payment-details').value,
-            address: document.getElementById('p-address').value,
-            contactNumber: document.getElementById('p-contact').value,
-            sellerEmail: document.getElementById('p-email').value
+        const mailOptions = {
+            from: process.env.GMAIL_USER,
+            to: to, // Automatically sends to any target email
+            subject: subject,
+            html: htmlContent
         };
 
-        const res = await fetch('/api/products', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        const info = await transporter.sendMail(mailOptions);
+        console.log("🚀 Email Sent Successfully via Gmail Nodemailer:", info.messageId);
+        return info;
+    } catch (error) {
+        console.log("❌ Nodemailer Email Sending Failed: ", error);
+        throw error;
+    }
+};
 
-        const data = await res.json();
-        if(res.ok) {
-            showNotification("Submitted! Sent verification request to Admin.");
-            document.getElementById('product-upload-form').reset();
-            document.getElementById('img-preview-label').textContent = "Select 3 or More Images *";
-            document.getElementById('vid-preview-label').textContent = "Select Video (Optional)";
-            renderSellerListings();
-        } else {
-            showNotification(data.error || "Submission rejected", "error");
-        }
-    } catch(err) {
-        showNotification("Connection error or large file size.", "error");
+// ==========================================
+// 🗄️ MONGODB CONFIGURATION & SCHEMAS
+// ==========================================
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (MONGODB_URI) {
+    mongoose.connect(MONGODB_URI)
+        .then(() => console.log("🔌 MongoDB Connected Successfully!"))
+        .catch(err => console.error("❌ MongoDB Connection Error: ", err));
+} else {
+    console.error("⚠️ CRITICAL WARNING: MONGODB_URI environment variable is missing!");
+}
+
+app.use((req, res, next) => {
+    if (mongoose.connection.readyState !== 1 && MONGODB_URI) {
+        mongoose.connect(MONGODB_URI)
+            .then(() => next())
+            .catch(err => res.status(500).json({ error: "Database reconnection failed" }));
+    } else if (!MONGODB_URI) {
+        return res.status(500).json({ error: "Database configuration missing on server." });
+    } else {
+        next();
     }
 });
 
-// Render Seller Personal Listings
-async function renderSellerListings() {
-    const container = document.getElementById('seller-listings-container');
-    if (!container) return;
-    const sellerEmail = document.getElementById('p-email').value || (currentUser ? currentUser.email : '');
-    
-    if(!sellerEmail) {
-        container.innerHTML = `<p class="text-xs text-gray-500 text-center">Enter your verification email in the form above to retrieve your upload history.</p>`;
-        return;
-    }
+// User Schema
+const UserSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true, lowercase: true },
+    username: String,
+    profileImage: String
+});
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
+
+// Product Schema
+const ProductSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    title: String,
+    price: Number,
+    description: String,
+    category: String,
+    imageUrl: String,
+    imageUrls: [String], // Array to support multiple image storage
+    videoUrl: String,
+    paymentDetails: String,
+    address: String,
+    contactNumber: String,
+    sellerEmail: { type: String, lowercase: true },
+    transactionId: String,
+    status: { type: String, default: 'pending' },
+    createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
+
+// Order Schema
+const OrderSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    productId: String,
+    title: String,
+    price: Number,
+    quantity: Number,
+    buyerName: String,
+    buyerEmail: { type: String, lowercase: true },
+    buyerPhone: String,
+    buyerAddress: String,
+    status: { type: String, default: 'Processing' },
+    createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
+
+// Static Paths Setup
+const rootPath = process.cwd();
+const publicPath = path.join(rootPath, 'public');
+
+app.use(express.static(rootPath));
+app.use(express.static(publicPath));
+
+// ==========================================
+// 👤 USER PROFILE & AUTHENTICATION APIS
+// ==========================================
+app.post('/api/users/login', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
 
     try {
-        const res = await fetch(`/api/products/seller/${sellerEmail}`);
-        const list = await res.json();
-        container.innerHTML = '';
+        let user = await User.findOne({ email: email.toLowerCase() });
 
-        if(list.length === 0) {
-            container.innerHTML = `<p class="text-xs text-gray-500 text-center">No uploads recorded yet for this email.</p>`;
-            return;
-        }
-
-        list.forEach(p => {
-            const statusColor = p.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-            container.innerHTML += `
-                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex gap-4 items-center">
-                    <img src="${p.imageUrl}" class="w-16 h-16 rounded-xl object-cover">
-                    <div class="flex-grow min-w-0">
-                        <h4 class="font-extrabold text-sm truncate">${p.title}</h4>
-                        <p class="text-xs text-gray-400">PKR ${p.price}</p>
-                    </div>
-                    <span class="text-[9px] uppercase border px-2.5 py-1 rounded-full font-bold ${statusColor}">${p.status}</span>
-                </div>
-            `;
-        });
-    } catch(e) {}
-}
-
-// User Dashboard Profile Update
-async function updateProfilePanel() {
-    const authBox = document.getElementById('auth-box');
-    const profilePanel = document.getElementById('profile-panel');
-
-    if (!currentUser) {
-        if(authBox) authBox.classList.remove('hidden');
-        if(profilePanel) profilePanel.classList.add('hidden');
-        return;
-    }
-
-    if(authBox) authBox.classList.add('hidden');
-    if(profilePanel) profilePanel.classList.remove('hidden');
-
-    document.getElementById('panel-email').textContent = currentUser.email;
-    document.getElementById('panel-role').textContent = `${currentAccountType} account`;
-    document.getElementById('panel-username').textContent = currentUser.username || currentUser.email.split('@')[0];
-    
-    const avatarImg = document.getElementById('avatar-image-display');
-    const avatarText = document.getElementById('avatar-text');
-    
-    if (currentUser.profileImage) {
-        avatarImg.src = currentUser.profileImage;
-        avatarImg.classList.remove('hidden');
-        avatarText.classList.add('hidden');
-    } else {
-        avatarImg.classList.add('hidden');
-        avatarText.classList.remove('hidden');
-        avatarText.textContent = currentUser.email.substring(0, 2).toUpperCase();
-    }
-
-    const orderContainer = document.getElementById('orders-summary-container');
-    if (!orderContainer) return;
-    orderContainer.innerHTML = '';
-
-    try {
-        const res = await fetch(`/api/orders/user/${currentUser.email}`);
-        const orders = await res.json();
-
-        if (orders.length === 0) {
-            orderContainer.innerHTML = `<p class="text-xs text-gray-500 text-center">No orders recorded yet. Start shopping!</p>`;
-            return;
-        }
-
-        orders.forEach(o => {
-            orderContainer.innerHTML += `
-                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center">
-                    <div>
-                        <h5 class="font-extrabold text-sm">${o.title} (Qty: ${o.quantity || 1})</h5>
-                        <p class="text-xs text-gray-400">ID: ${o.id} • PKR ${o.price * (o.quantity || 1)}</p>
-                        <p class="text-[10px] text-gray-500 mt-1">Shipped to: ${o.buyerAddress}</p>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/30 px-3 py-1 rounded-full uppercase">${o.status}</span>
-                </div>
-            `;
-        });
-    } catch (e) {
-        orderContainer.innerHTML = `<p class="text-xs text-rose-500">Failed to sync orders.</p>`;
-    }
-}
-
-function triggerProfileImageUpload() {
-    document.getElementById('hidden-profile-image-input').click();
-}
-
-async function uploadProfileImageFile(input) {
-    const file = input.files[0];
-    if (!file || !currentUser) return;
-
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const base64Data = e.target.result;
-        try {
-            const res = await fetch('/api/users/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: currentUser.email, profileImage: base64Data })
+        if (!user) {
+            user = new User({
+                email: email.toLowerCase(),
+                username: email.split('@')[0],
+                profileImage: ''
             });
-            const data = await res.json();
-            if (data.success) {
-                currentUser.profileImage = base64Data;
-                updateProfilePanel();
-                showNotification("Profile display picture updated!");
-            }
-        } catch (err) {
-            showNotification("Failed to upload profile picture.", "error");
+            await user.save();
         }
-    };
-    reader.readAsDataURL(file);
-}
-
-async function editProfileUsername() {
-    if (!currentUser) return;
-    const currentName = document.getElementById('panel-username').textContent;
-    const newName = prompt("Enter your new Username:", currentName);
-    
-    if (newName === null || newName.trim() === "") return;
-
-    try {
-        const res = await fetch('/api/users/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: currentUser.email, username: newName.trim() })
-        });
-        const data = await res.json();
-        if (data.success) {
-            currentUser.username = data.user.username;
-            updateProfilePanel();
-            showNotification("Username updated successfully!");
-        }
-    } catch (err) {
-        showNotification("Failed to save changes.", "error");
-    }
-}
-
-// Authentication Logic
-async function handleAuth() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
-
-    if (!email || !password) {
-        showNotification("Please fill out complete account parameters.", "error");
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/users/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-        });
-        const data = await res.json();
-        if(data.success) {
-            currentUser = data.user;
-            showNotification(`Welcome back, ${currentUser.username || email}!`);
-            updateProfilePanel();
-        }
+        res.json({ success: true, user });
     } catch (e) {
-        showNotification("Authentication Server Down", "error");
+        res.status(500).json({ error: "Authentication system failure" });
     }
-}
+});
 
-function logout() {
-    currentUser = null;
-    const badge = document.getElementById('user-status-badge');
-    if (badge) badge.classList.add('hidden');
-    showNotification("Logged out successfully.");
-    updateProfilePanel();
-    switchTab('home');
-}
+app.post('/api/users/update', async (req, res) => {
+    const { email, username, profileImage } = req.body;
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(404).json({ error: "User profile not found" });
 
-// Message Desk Simulation
-function sendMessage() {
-    const input = document.getElementById('chat-input');
-    const box = document.getElementById('chat-box');
-    
-    if(!input || !input.value.trim()) return;
+        if (username) user.username = username;
+        if (profileImage) user.profileImage = profileImage;
 
-    box.innerHTML += `
-        <div class="bg-orange-500 text-slate-950 p-3 rounded-2xl max-w-[80%] self-end ml-auto font-semibold">
-            ${input.value}
-        </div>
-    `;
-    
-    const query = input.value.toLowerCase();
-    input.value = '';
+        await user.save();
+        res.json({ success: true, user });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to update profile settings" });
+    }
+});
 
-    setTimeout(() => {
-        let reply = "Your message has been routed to MT Central Command. Our live representative will respond shortly.";
-        if(query.includes("order") || query.includes("delivery")) {
-            reply = "To track orders, simply click the 'Account' button down in the dock to view live processing statuses.";
-        } else if(query.includes("publish") || query.includes("verify") || query.includes("50")) {
-            reply = "Publishing verification is automated. Please ensure you sent the requested fees and typed the exact TxID in the Merchant Dashboard.";
+// ==========================================
+// 🛠️ PRODUCTS & GLOBAL ORDERS PIPELINE
+// ==========================================
+app.get('/api/products', async (req, res) => {
+    try {
+        const approvedProducts = await Product.find({ status: 'approved' });
+        res.json(approvedProducts);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to read products" });
+    }
+});
+
+app.get('/api/products/seller/:email', async (req, res) => {
+    try {
+        const sellerProducts = await Product.find({ sellerEmail: req.params.email.toLowerCase() });
+        res.json(sellerProducts);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch seller products" });
+    }
+});
+
+app.get('/api/orders/user/:email', async (req, res) => {
+    try {
+        const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
+        
+        const updatedOrders = [];
+        for (let order of userOrders) {
+            const prod = await Product.findOne({ id: order.productId });
+            updatedOrders.push({
+                ...order._doc,
+                productImage: prod ? prod.imageUrl : ''
+            });
         }
+        res.json(updatedOrders);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch orders" });
+    }
+});
 
-        box.innerHTML += `
-            <div class="bg-slate-800 p-3 rounded-2xl max-w-[80%] text-gray-200">
-                ${reply}
+app.post('/api/products', async (req, res) => {
+    const { title, price, description, category, imageBase64, imageUrls, videoBase64, paymentDetails, address, contactNumber, sellerEmail, transactionId } = req.body;
+    if (!title || !price || (!imageBase64 && (!imageUrls || imageUrls.length === 0)) || !paymentDetails || !transactionId) {
+        return res.status(400).json({ error: "Required details or verification transaction is missing." });
+    }
+
+    try {
+        const productId = Date.now().toString();
+
+        const newProduct = new Product({
+            id: productId,
+            title, price: parseFloat(price), description, category: category || 'General',
+            imageUrl: imageBase64 || (imageUrls && imageUrls[0]) || '',
+            imageUrls: imageUrls || [imageBase64],
+            videoUrl: videoBase64 || '',
+            paymentDetails, address, contactNumber, sellerEmail, transactionId,
+            status: 'pending'
+        });
+
+        await newProduct.save();
+
+        const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
+        
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0f172a; color: #ffffff;">
+                <h2 style="color: #f97316; margin-bottom: 4px;">💼 New Store Submission Pending</h2>
+                <p><strong>Seller:</strong> ${sellerEmail}</p>
+                <p><strong>Product:</strong> ${title}</p>
+                <p><strong>TXID:</strong> <span style="background-color: #1e293b; padding: 4px 8px; border-radius: 4px; color: #facc15;">${transactionId}</span></p>
+                <div style="margin: 24px 0; text-align: center;">
+                    <a href="${approveUrl}" style="background-color: #22c55e; color: #000000; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-block;">
+                        ✅ Verify & Approve Product Live
+                    </a>
+                </div>
             </div>
         `;
-        box.scrollTop = box.scrollHeight;
-    }, 1000);
-}
-
-// Shopping Cart Controller
-function addToCart(productId) {
-    const p = currentProducts.find(item => item.id === productId);
-    if(!p) return;
-
-    const qtyInput = document.getElementById('detail-quantity');
-    const selectedQty = qtyInput ? parseInt(qtyInput.value) : 1;
-
-    const existing = cart.find(item => item.id === productId);
-    if(existing) {
-        existing.quantity += selectedQty;
-    } else {
-        cart.push({ ...p, quantity: selectedQty });
+        
+        await sendHtmlEmail(ADMIN_EMAIL, `🚨 Approve ${title} from ${sellerEmail}`, emailHtml);
+        res.status(201).json({ message: "Product listed for admin review." });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Database error or Mail transmission failure." });
     }
+});
 
-    const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-    document.getElementById('cart-count').textContent = totalItems;
-    document.getElementById('cart-count').classList.remove('hidden');
-    showNotification(`Added ${p.title} (${selectedQty}x) to checkout cart!`);
-}
+app.get('/api/products/approve/:id', async (req, res) => {
+    try {
+        const product = await Product.findOne({ id: req.params.id });
+        if (!product) return res.send("<h1>Product not found inside Database!</h1>");
 
-// Render Cart
-function renderCart() {
-    const container = document.getElementById('cart-items');
-    if (!container) return;
-    container.innerHTML = '';
+        product.status = 'approved';
+        await product.save();
 
-    if (cart.length === 0) {
-        container.innerHTML = `<p class="text-center text-gray-500 py-8">Your shopping basket is empty.</p>`;
-        return;
+        await sendHtmlEmail(product.sellerEmail, `🚀 Product Live!`, `<h2>Your product "${product.title}" is live now.</h2>`);
+        res.send(`<h1 style="text-align:center; margin-top:50px; color:#22c55e; font-family:sans-serif;">✅ Product Approved Successfully!</h1>`);
+    } catch (e) {
+        res.send("<h1>Server Error processing approval.</h1>");
     }
+});
 
-    cart.forEach(item => {
-        container.innerHTML += `
-            <div class="bg-slate-900/60 p-4 rounded-2xl border border-gray-850 flex gap-4 items-center justify-between">
-                <div class="flex gap-4 items-center">
-                    <img src="${item.imageUrl}" class="w-12 h-12 rounded-xl object-cover">
-                    <div>
-                        <h4 class="font-extrabold text-sm">${item.title}</h4>
-                        <p class="text-xs text-gray-400 mb-1">Price: PKR ${item.price}</p>
-                        <div class="flex items-center bg-slate-950 border border-gray-800 rounded-lg overflow-hidden w-fit">
-                            <button onclick="updateCartQuantity('${item.id}', -1)" class="px-2 py-0.5 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">-</button>
-                            <span class="px-3 text-xs font-bold text-orange-400">${item.quantity}</span>
-                            <button onclick="updateCartQuantity('${item.id}', 1)" class="px-2 py-0.5 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">+</button>
-                        </div>
+// ==========================================
+// ⚡ UPDATED ORDER PROCESSING PIPELINE
+// ==========================================
+app.post('/api/orders', async (req, res) => {
+    const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
+    if (!items || items.length === 0 || !buyerEmail) return res.status(400).json({ error: "Incomplete order details." });
+
+    try {
+        for (const item of items) {
+            const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+            
+            // Safe fallback logic for item identifier string matching
+            const targetProductId = item.id || item._id;
+
+            // Secure lookup for product listing to match vendor ownership
+            const linkedProduct = await Product.findOne({ id: targetProductId.toString() });
+            const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
+
+            const newOrder = new Order({
+                id: orderId, 
+                productId: targetProductId, 
+                title: item.title, 
+                price: item.price, 
+                quantity: item.quantity,
+                buyerName, 
+                buyerEmail: buyerEmail.toLowerCase(), 
+                buyerPhone, 
+                buyerAddress,
+                status: 'Processing'
+            });
+
+            await newOrder.save();
+
+            const detailedOrderHtml = `
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #1e293b; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0b0f19; color: #f3f4f6;">
+                    <h2 style="color: #f97316; border-bottom: 2px solid #1e293b; padding-bottom: 12px; margin-top: 0;">📦 Order Dispatch Report: ${orderId}</h2>
+                    <h3 style="color: #38bdf8; margin-bottom: 8px;">🛒 Product Details</h3>
+                    <p style="margin: 4px 0;"><strong>Item Title:</strong> ${item.title}</p>
+                    <p style="margin: 4px 0;"><strong>Quantity Ordered:</strong> ${item.quantity}</p>
+                    <p style="margin: 4px 0;"><strong>Unit Price:</strong> PKR ${item.price}</p>
+                    <p style="margin: 4px 0;"><strong>Total Bill:</strong> <span style="color: #facc15; font-weight: bold;">PKR ${item.price * item.quantity}</span></p>
+                    <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; margin-top: 20px;">
+                        <h3 style="color: #4ade80; margin-top: 0; margin-bottom: 8px;">📋 Verified Buyer Shipping Information</h3>
+                        <p style="margin: 4px 0;"><strong>Full Name:</strong> ${buyerName}</p>
+                        <p style="margin: 4px 0;"><strong>Active Email:</strong> ${buyerEmail}</p>
+                        <p style="margin: 4px 0;"><strong>Contact Number (COD):</strong> ${buyerPhone}</p>
+                        <p style="margin: 4px 0; line-height: 1.4;"><strong>Complete Shipping Address:</strong> ${buyerAddress}</p>
                     </div>
                 </div>
-                <button onclick="removeFromCart('${item.id}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button>
-            </div>
-        `;
+            `;
+
+            // Deliveries pipeline
+            await sendHtmlEmail(buyerEmail, `🛍️ MT Store Order Confirmation: ${orderId}`, detailedOrderHtml);
+            await sendHtmlEmail(ADMIN_EMAIL, `🔔 Platform Notification: Order ${orderId}`, detailedOrderHtml);
+            
+            // Dynamic check for successful seller matching extraction
+            if (sellerTargetEmail) {
+                await sendHtmlEmail(sellerTargetEmail.toLowerCase(), `💼 New Order Received for Your Product: ${orderId}`, detailedOrderHtml);
+            }
+        }
+
+        res.json({ message: "Order placed successfully!" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Order pipeline execution failed." });
+    }
+});
+
+app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(rootPath, 'index.html'));
+});
+
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 MT Store Engine Active on http://localhost:${PORT}`);
     });
 }
 
-function removeFromCart(id) {
-    cart = cart.filter(item => item.id !== id);
-    if(cart.length === 0) {
-        document.getElementById('cart-count').classList.add('hidden');
-    } else {
-        const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-        document.getElementById('cart-count').textContent = totalItems;
-    }
-    renderCart();
-}
-
-async function checkout() {
-    if(cart.length === 0) {
-        showNotification("Your cart is completely empty.", "error");
-        return;
-    }
-
-    const payload = {
-        items: cart,
-        buyerName: document.getElementById('buyer-name').value,
-        buyerEmail: document.getElementById('buyer-email').value,
-        buyerPhone: document.getElementById('buyer-phone').value,
-        buyerAddress: document.getElementById('buyer-address').value
-    };
-
-    if(!payload.buyerName || !payload.buyerEmail || !payload.buyerPhone || !payload.buyerAddress) {
-        showNotification("Please fill the shipping data correctly.", "error");
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if(res.ok) {
-            showNotification("Success! Ordered via Cash on Delivery (COD).");
-            cart = [];
-            document.getElementById('cart-count').classList.add('hidden');
-            renderCart();
-            switchTab('home');
-        } else {
-            showNotification("Order submission failed.", "error");
-        }
-    } catch(e) {
-        showNotification("Network timeout during checkout.", "error");
-    }
-}
-
-window.onload = () => {
-    loadProducts();
-};
+module.exports = app;
