@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MT-STORE | Multi-Vendor E-Commerce</title>
-    <!-- Tailwind CSS Engine Link -->
+    <!-- Tailwind CSS Engine -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .hidden-element-state { display: none !important; }
@@ -14,7 +14,7 @@
 <body class="min-h-screen flex flex-col justify-between">
 
     <!-- ==========================================
-         🚀 GLOBAL NAVIGATION HEADER
+         🚀 GLOBAL HEADER / NAVIGATION
          ========================================== -->
     <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -23,25 +23,25 @@
                 MT-STORE
             </div>
 
-            <!-- Central Nav Links -->
+            <!-- Navigation Links -->
             <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-300">
                 <button onclick="switchClientInterfaceTab('home')" class="hover:text-white transition-colors">Marketplace</button>
                 <button onclick="switchClientInterfaceTab('seller-workspace')" class="hover:text-white transition-colors">Seller Board</button>
             </nav>
 
-            <!-- Right Action Widgets -->
+            <!-- Right Widgets -->
             <div class="flex items-center gap-4">
-                <!-- Shopping Cart Trigger -->
+                <!-- Shopping Cart Badge Counter -->
                 <button class="relative p-2 bg-slate-950 rounded-xl border border-slate-800 text-slate-300 hover:text-white">
                     🛒 <span id="cart-badge-counter-value" class="absolute -top-1 -right-1 bg-emerald-500 text-slate-950 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">0</span>
                 </button>
 
-                <!-- Auth Trigger / Triggered State Dynamic Nodes -->
+                <!-- Dynamic Auth Buttons -->
                 <button id="auth-action-trigger" onclick="switchClientInterfaceTab('login')" class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md">
                     Sign In
                 </button>
 
-                <!-- Logged In User Profile Widget -->
+                <!-- Profile Badge (Logged In) -->
                 <div id="user-profile-widget" class="hidden-element-state flex items-center gap-2 cursor-pointer" onclick="switchClientInterfaceTab('profile')">
                     <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-amber-500">U</div>
                     <span id="profile-display-email" class="text-xs text-slate-300 hidden sm:inline max-w-[120px] truncate">user@email.com</span>
@@ -51,33 +51,33 @@
     </header>
 
     <!-- ==========================================
-         📦 MAIN ROUTER INTERFACE VIEWS WIDGETS
+         📦 MAIN CONTENT INTERFACE VIEWS
          ========================================== -->
     <main class="flex-1 py-8 px-4 max-w-7xl mx-auto w-full">
 
-        <!-- LAYER 1: 🛒 MARKETPLACE HOME PAGE -->
+        <!-- TAB 1: 🛒 MARKETPLACE HOME -->
         <section id="view-pane-layer-home" class="app-navigation-panel-layer space-y-8">
-            <div class="text-center md:text-left space-y-2">
+            <div class="space-y-2">
                 <h1 class="text-3xl font-black text-white tracking-tight sm:text-4xl">Discover Unique Products</h1>
-                <p class="text-slate-400 max-w-xl text-sm">Verified sellers. Secure payments via platform escrow systems.</p>
+                <p class="text-slate-400 text-sm">Verified sellers. Secure payments via platform escrow systems.</p>
             </div>
             
-            <!-- Dynamic Products Loading Row Grid -->
+            <!-- Dynamic Products Grid -->
             <div id="catalog-products-dynamic-view" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <!-- Loaded Dynamically via main.js -->
+                <!-- Data injected dynamically by main.js -->
             </div>
         </section>
 
-        <!-- LAYER 2: 🔐 AUTHENTICATION USER LOGIN PANE -->
+        <!-- TAB 2: 🔐 LOGIN PANEL -->
         <section id="view-pane-layer-login" class="app-navigation-panel-layer hidden-element-state max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
             <div class="text-center space-y-1">
                 <h2 class="text-2xl font-black text-white">Welcome Back</h2>
-                <p class="text-xs text-slate-400">Enter your credentials to manage products and orders.</p>
+                <p class="text-xs text-slate-400">Enter your email credentials to proceed.</p>
             </div>
             <form id="app-login-action-form" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
-                    <input type="email" id="auth-submit-email-field" placeholder="name@domain.com" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-all" required />
+                    <input type="email" id="auth-submit-email-field" placeholder="name@domain.com" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-3 text-sm text-white outline-none transition-all" required />
                 </div>
                 <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-bold rounded-xl transition-all shadow-lg text-sm">
                     Authenticate Session
@@ -85,7 +85,7 @@
             </form>
         </section>
 
-        <!-- LAYER 3: 👤 USER INTERFACE PROFILE & TRACKING PANEL -->
+        <!-- TAB 3: 👤 USER PROFILE & PURCHASES -->
         <section id="view-pane-layer-profile" class="app-navigation-panel-layer hidden-element-state max-w-3xl mx-auto space-y-8">
             <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div class="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">
@@ -96,34 +96,35 @@
                     </div>
                 </div>
                 
-                <!-- 💼 Seller Enrollment Workspace Interface Link Trigger Button -->
+                <!-- 💼 Seller Workspace Dashboard Switcher Button -->
                 <button onclick="switchClientInterfaceTab('seller-workspace')" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md">
                     💼 Become a Seller / Open Store Dashboard
                 </button>
             </div>
 
-            <!-- 📦 Real-time Transaction Orders Tracking Module -->
+            <!-- Real-time Orders Tracking (Jahan Cancel Button render hoga) -->
             <div class="space-y-4">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">📦 Track Your Purchases</h3>
                 <div id="account-orders-tracking-pipeline" class="space-y-3">
-                    <!-- Dynamic Orders Rendered Here -->
+                    <!-- Dynamic orders layout elements listing mapped by main.js -->
                 </div>
             </div>
         </section>
 
-        <!-- LAYER 4: 💼 SELLER HUB WORKSPACE & PRODUCT SUBMISSION PANE -->
+        <!-- TAB 4: 💼 SELLER HUB WORKSPACE (NEW DASHBOARD) -->
         <section id="view-pane-layer-seller-workspace" class="app-navigation-panel-layer hidden-element-state max-w-4xl mx-auto space-y-8">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-4 gap-4">
                 <div>
                     <h2 class="text-2xl font-black text-white">💼 Merchant Store Workspace</h2>
-                    <p class="text-xs text-slate-400 mt-1">Manage your storefront listings and check approval updates.</p>
+                    <p class="text-xs text-slate-400 mt-1">Manage listings and check your portfolio approval updates.</p>
                 </div>
+                <!-- Form Toggle Trigger -->
                 <button onclick="document.getElementById('vendor-publish-listing-form').classList.toggle('hidden-element-state')" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-colors shadow-sm">
                     ➕ Create New Marketplace Listing
                 </button>
             </div>
 
-            <!-- Product Submission Form Container (Collapsible State) -->
+            <!-- Product Submission Form -->
             <form id="vendor-publish-listing-form" class="hidden-element-state bg-slate-900 border border-slate-800 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-5 shadow-xl">
                 <h3 class="text-md font-bold text-amber-500 col-span-full border-b border-slate-800 pb-2">📋 Enter Product Details</h3>
                 
@@ -153,7 +154,7 @@
                     <textarea id="listing-desc" rows="3" placeholder="Provide complete specifications..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-amber-500 resize-none" required></textarea>
                 </div>
 
-                <h3 class="text-md font-bold text-amber-500 col-span-full border-b border-slate-800 pb-2 mt-2">🔒 Payment & Processing Verification</h3>
+                <h3 class="text-md font-bold text-amber-500 col-span-full border-b border-slate-800 pb-2 mt-2">🔒 Payment Verification</h3>
                 <div>
                     <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Payment Method Info</label>
                     <input type="text" id="listing-payment-info" placeholder="e.g., JazzCash / Bank Transfer Details" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-amber-500" required />
@@ -167,14 +168,14 @@
                     <input type="text" id="listing-address" placeholder="Store pickup or dispatch hub location details" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-amber-500" required />
                 </div>
 
-                <!-- 🖼️ Multiple Images Processor Component Input Block Grid Element -->
+                <!-- 🖼️ Multi-Image Upload Panel Element Node Row -->
                 <div class="col-span-full bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
-                    <label class="block text-xs font-bold uppercase text-slate-400">Media Assets Upload (Multiple Files Allowed)</label>
+                    <label class="block text-xs font-bold uppercase text-slate-400">Media Assets Upload (Multiple Selection Supported)</label>
                     <label class="inline-flex items-center justify-center px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition-colors text-white">
                         📁 Choose Image Files
                         <input type="file" id="vendor-item-multiple-images" accept="image/*" multiple class="hidden" />
                     </label>
-                    <!-- Dynamically populated inline array thumbnail views container matrix row -->
+                    <!-- Inline multi-image runtime selection preview thumbnails container -->
                     <div id="images-upload-preview-row" class="flex flex-wrap gap-3 pt-2"></div>
                 </div>
 
@@ -185,11 +186,11 @@
                 </div>
             </form>
 
-            <!-- Active Registered Products Collection Panel Portfolio Portfolio -->
+            <!-- Active Registered Products Status Monitor -->
             <div class="space-y-4">
                 <h3 class="text-lg font-bold text-white">📊 Live Portfolio Status</h3>
                 <div id="vendor-products-portfolio-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Dynamically populated vendor dashboard portfolio array matrix list rows -->
+                    <!-- Data populated dynamically by main.js -->
                 </div>
             </div>
         </section>
@@ -197,13 +198,13 @@
     </main>
 
     <!-- ==========================================
-         📦 SYSTEM GLOBAL UTILITIES STYLED FOOTER
+         📦 SYSTEM GLOBAL UTILITIES FOOTER
          ========================================== -->
     <footer class="bg-slate-950 border-t border-slate-900 py-6 text-center text-xs text-slate-500">
         &copy; 2026 MT-STORE Network Ecosystem Framework. All operational permissions secured.
     </footer>
 
-    <!-- Connect Integrated Frontend Control Logic Script Wireframes File -->
+    <!-- Frontend Controls Logic Script Reference Wireframe Link -->
     <script src="main.js"></script>
 </body>
 </html>
