@@ -255,6 +255,9 @@ app.get('/api/products/approve/:id', async (req, res) => {
     }
 });
 
+// ==========================================
+// ⚡ UPDATED ORDER PROCESSING PIPELINE
+// ==========================================
 app.post('/api/orders', async (req, res) => {
     const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
     if (!items || items.length === 0 || !buyerEmail) return res.status(400).json({ error: "Incomplete order details." });
@@ -263,16 +266,27 @@ app.post('/api/orders', async (req, res) => {
         for (const item of items) {
             const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
             
+            // Safe fallback logic for item identifier string matching
+            const targetProductId = item.id || item._id;
+
+            // Secure lookup for product listing to match vendor ownership
+            const linkedProduct = await Product.findOne({ id: targetProductId.toString() });
+            const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
+
             const newOrder = new Order({
-                id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity,
-                buyerName, buyerEmail: buyerEmail.toLowerCase(), buyerPhone, buyerAddress,
+                id: orderId, 
+                productId: targetProductId, 
+                title: item.title, 
+                price: item.price, 
+                quantity: item.quantity,
+                buyerName, 
+                buyerEmail: buyerEmail.toLowerCase(), 
+                buyerPhone, 
+                buyerAddress,
                 status: 'Processing'
             });
 
             await newOrder.save();
-
-            const linkedProduct = await Product.findOne({ id: item.id });
-            const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
 
             const detailedOrderHtml = `
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #1e293b; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0b0f19; color: #f3f4f6;">
@@ -292,10 +306,13 @@ app.post('/api/orders', async (req, res) => {
                 </div>
             `;
 
+            // Deliveries pipeline
             await sendHtmlEmail(buyerEmail, `🛍️ MT Store Order Confirmation: ${orderId}`, detailedOrderHtml);
             await sendHtmlEmail(ADMIN_EMAIL, `🔔 Platform Notification: Order ${orderId}`, detailedOrderHtml);
+            
+            // Dynamic check for successful seller matching extraction
             if (sellerTargetEmail) {
-                await sendHtmlEmail(sellerTargetEmail, `💼 New Order Received for Your Product: ${orderId}`, detailedOrderHtml);
+                await sendHtmlEmail(sellerTargetEmail.toLowerCase(), `💼 New Order Received for Your Product: ${orderId}`, detailedOrderHtml);
             }
         }
 
