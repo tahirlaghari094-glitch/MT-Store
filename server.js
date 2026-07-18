@@ -49,7 +49,7 @@ if (MONGODB_URI) {
     console.error("⚠️ CRITICAL WARNING: MONGODB_URI environment variable is missing!");
 }
 
-// Middlware to guarantee database connection check before hit any API
+// Middleware to guarantee database connection check before hit any API
 app.use((req, res, next) => {
     if (mongoose.connection.readyState !== 1 && MONGODB_URI) {
         mongoose.connect(MONGODB_URI)
