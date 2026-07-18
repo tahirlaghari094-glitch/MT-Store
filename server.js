@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const { Resend } = require('resend'); // Nodemailer ki jagah Resend import kiya
+const { Resend } = require('resend');
 
 const app = express();
+
+// Increase payload limits for Base64 assets
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
@@ -16,12 +18,11 @@ const LIVE_DOMAIN = 'https://mt-store-sandy.vercel.app';
 // ==========================================
 const resend = new Resend('re_MUyzku5K_J3zJ6HiYQwwYgZo8niMkxpUX');
 
-// Resend ke zariye Email bhejne ka helper function
 const sendHtmlEmail = async (to, subject, htmlContent) => {
     if (!to) return;
     try {
         const data = await resend.emails.send({
-            from: 'MT Store <onboarding@resend.dev>', // Free account ke liye onboarding address mandatory hai
+            from: 'MT Store <onboarding@resend.dev>',
             to: to,
             subject: subject,
             html: htmlContent
@@ -39,13 +40,27 @@ const sendHtmlEmail = async (to, subject, htmlContent) => {
 // ==========================================
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-    console.log("⚠️ Warning: MONGODB_URI environment variable is missing!");
-} else {
+// Vercel crash na ho agar URI miss ho, isliye initial connect conditional kiya hai
+if (MONGODB_URI) {
     mongoose.connect(MONGODB_URI)
-        .then(() => console.log("🔌 MongoDB Connected Successfully Permenantly!"))
-        .catch(err => console.log("❌ MongoDB Connection Error: ", err));
+        .then(() => console.log("🔌 MongoDB Connected Successfully!"))
+        .catch(err => console.error("❌ MongoDB Connection Error: ", err));
+} else {
+    console.error("⚠️ CRITICAL WARNING: MONGODB_URI environment variable is missing!");
 }
+
+// Middlware to guarantee database connection check before hit any API
+app.use((req, res, next) => {
+    if (mongoose.connection.readyState !== 1 && MONGODB_URI) {
+        mongoose.connect(MONGODB_URI)
+            .then(() => next())
+            .catch(err => res.status(500).json({ error: "Database reconnection failed" }));
+    } else if (!MONGODB_URI) {
+        return res.status(500).json({ error: "Database configuration missing on server." });
+    } else {
+        next();
+    }
+});
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -53,7 +68,7 @@ const UserSchema = new mongoose.Schema({
     username: String,
     profileImage: String
 });
-const User = mongoose.model('User', UserSchema);
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 // Product Schema
 const ProductSchema = new mongoose.Schema({
@@ -72,7 +87,7 @@ const ProductSchema = new mongoose.Schema({
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
-const Product = mongoose.model('Product', ProductSchema);
+const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
 // Order Schema
 const OrderSchema = new mongoose.Schema({
@@ -88,15 +103,14 @@ const OrderSchema = new mongoose.Schema({
     status: { type: String, default: 'Processing' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
-const Order = mongoose.model('Order', OrderSchema);
+const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
-// Vercel ke liye static files path configuration
-const publicPath = path.join(process.cwd(), 'public');
+// Static Paths Setup
 const rootPath = process.cwd();
+const publicPath = path.join(rootPath, 'public');
 
 app.use(express.static(rootPath));
 app.use(express.static(publicPath));
-
 
 // ==========================================
 // 👤 USER PROFILE & AUTHENTICATION APIS
@@ -138,7 +152,6 @@ app.post('/api/users/update', async (req, res) => {
     }
 });
 
-
 // ==========================================
 // 🛠️ PRODUCTS & GLOBAL ORDERS PIPELINE
 // ==========================================
@@ -164,7 +177,6 @@ app.get('/api/orders/user/:email', async (req, res) => {
     try {
         const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
         
-        // Product images linkage logic
         const updatedOrders = [];
         for (let order of userOrders) {
             const prod = await Product.findOne({ id: order.productId });
@@ -288,14 +300,17 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-app.get('/*', (req, res) => {
+// SPA Fallback only for non-API routes to avoid intercepting serverless functions
+app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(rootPath, 'index.html'));
 });
 
+// Local Development Server Listener
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
         console.log(`🚀 MT Store Engine Active on http://localhost:${PORT}`);
     });
 }
 
+// Global Export for Vercel Serverless Architecture
 module.exports = app;
