@@ -1,262 +1,1298 @@
-const express = require('express');
-const nodemailer = require('nodemailer');
-const cors = require('cors');
-const path = require('path');
+let currentProducts = [];
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+let cart = [];
 
-// Middleware Configurations (Base64 file payloads ke liye limit barha di gayi hai)
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+let currentUser = null;
 
-// Mock In-Memory Databases
-let products = [];
-let orders = [];
-let users = [];
+let currentAccountType = 'common'; // common or seller
 
-// ==========================================
-// CONFIGURATION: NODEMAILER TRANSPORTER
-// ==========================================
-// Yahan aap apni SMTP details lagayein (Jaise Gmail App Password ya Hostinger SMTP)
-const ADMIN_EMAIL = 'admin@example.com'; // Apni Admin Email yahan likhein
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // Ya aap host/port configure kar sakte hain
-    auth: {
-        user: 'your-email@gmail.com', // Aapka system email account
-        pass: 'your-app-password'     // Aapka secure app password
+
+
+// Base64 Media Storage variables
+
+let uploadedImagesArray = [];
+
+let uploadedVideoBase64 = "";
+
+
+
+// Custom Glass-morphic Toast Notification Engine
+
+function showNotification(message, type = 'success') {
+
+    const toast = document.getElementById('toast-notification');
+
+    const msgText = document.getElementById('toast-message');
+
+    const icon = document.getElementById('toast-icon');
+
+
+
+    if (!toast || !msgText || !icon) return;
+
+    msgText.textContent = message;
+
+    
+
+    if (type === 'error') {
+
+        toast.classList.remove('border-emerald-500/30', 'text-emerald-400');
+
+        toast.classList.add('border-rose-500/30', 'text-rose-400');
+
+        icon.className = "fa-solid fa-circle-exclamation text-xl text-rose-400";
+
+    } else {
+
+        toast.classList.remove('border-rose-500/30', 'text-rose-400');
+
+        toast.classList.add('border-emerald-500/30', 'text-emerald-400');
+
+        icon.className = "fa-solid fa-circle-check text-xl text-emerald-400";
+
     }
-});
 
-// Helper function to extract content-type and raw data from base64 string
-function parseBase64Attachment(base64Str, filename) {
-    if (!base64Str) return null;
-    const matches = base64Str.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) return null;
-    return {
-        filename: filename,
-        content: Buffer.from(matches[2], 'base64'),
-        contentType: matches[1]
-    };
+
+
+    toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
+
+    toast.classList.add('opacity-100', 'translate-y-0');
+
+
+
+    setTimeout(() => {
+
+        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
+
+        toast.classList.remove('opacity-100', 'translate-y-0');
+
+    }, 4500);
+
 }
 
-// ==========================================
-// API ROUTES: PRODUCTS LOGIC
-// ==========================================
 
-// 1. Get all approved products for storefront grid
-app.get('/api/products', (req, res) => {
-    const approvedProducts = products.filter(p => p.status === 'approved');
-    res.json(approvedProducts);
-});
 
-// 2. Get merchant dashboard upload history by email
-app.get('/api/products/seller/:email', (req, res) => {
-    const sellerList = products.filter(p => p.sellerEmail === req.params.email);
-    res.json(sellerList);
-});
+// 3 Dots Dynamic Dropdown Menu
 
-// 3. Post / Upload a Product with 3 Images Integration
-app.post('/api/products', async (req, res) => {
+function toggleDropdown() {
+
+    document.getElementById('accountDropdown').classList.toggle('hidden');
+
+}
+
+
+
+function setAccountType(type) {
+
+    currentAccountType = type;
+
+    toggleDropdown();
+
+    
+
+    const badge = document.getElementById('user-status-badge');
+
+    if (badge) {
+
+        badge.textContent = `${type} profile`;
+
+        badge.classList.remove('hidden');
+
+    }
+
+
+
+    if(type === 'seller') {
+
+        showNotification("Switched to Merchant Account dashboard.");
+
+        switchTab('seller');
+
+    } else {
+
+        showNotification("Switched to Common Buyer Account.");
+
+        switchTab('home');
+
+    }
+
+    
+
+    updateProfilePanel();
+
+}
+
+
+
+// Dynamic Tabs Controller
+
+function switchTab(tabName) {
+
+    document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
+
+    
+
+    if (tabName === 'home') {
+
+        document.getElementById('home-view').classList.add('active');
+
+        loadProducts();
+
+    }
+
+    else if (tabName === 'detail') document.getElementById('detail-view').classList.add('active');
+
+    else if (tabName === 'seller') {
+
+        document.getElementById('seller-view').classList.add('active');
+
+        renderSellerListings();
+
+    }
+
+    else if (tabName === 'cart') {
+
+        document.getElementById('cart-view').classList.add('active');
+
+        renderCart();
+
+    }
+
+    else if (tabName === 'account') {
+
+        document.getElementById('account-view').classList.add('active');
+
+        updateProfilePanel();
+
+    }
+
+    else if (tabName === 'messages') {
+
+        document.getElementById('messages-view').classList.add('active');
+
+    }
+
+}
+
+
+
+// Helper Function to convert file to Base64 instantly
+
+function fileToDataURL(file) {
+
+    return new Promise((resolve, reject) => {
+
+        const reader = new FileReader();
+
+        reader.onload = (e) => resolve(e.target.result);
+
+        reader.onerror = (e) => reject(e);
+
+        reader.readAsDataURL(file);
+
+    });
+
+}
+
+
+
+// Gallery Media Label Updater (Sirf status text update karega, validation submit par hogi)
+
+async function previewMedia(input, labelId) {
+
+    if(input.id === 'p-image-file') {
+
+        const files = input.files;
+
+        if (files.length < 3) {
+
+            showNotification('Please select at least 3 images.', 'error');
+
+            input.value = '';
+
+            document.getElementById(labelId).innerText = 'Select 3 or More Images *';
+
+            return;
+
+        }
+
+        document.getElementById(labelId).innerText = `${files.length} Images Selected ✓`;
+
+    } else if (input.id === 'p-video-file') {
+
+        const file = input.files[0];
+
+        if (!file) return;
+
+        document.getElementById(labelId).textContent = "Video Selected ✓";
+
+    }
+
+}
+
+
+
+// Fetch and Render Approved Products
+
+async function loadProducts() {
+
     try {
-        const { 
-            title, price, description, imageBase64, imagesArray, 
-            videoBase64, transactionId, paymentDetails, address, 
-            contactNumber, sellerEmail 
-        } = req.body;
 
-        if (!title || !price || !sellerEmail) {
-            return res.status(400).json({ error: "Missing required product metrics." });
+        const response = await fetch('/api/products');
+
+        currentProducts = await response.json();
+
+        const grid = document.getElementById('product-grid');
+
+        if (!grid) return;
+
+        grid.innerHTML = '';
+
+
+
+        if(currentProducts.length === 0) {
+
+            grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No active products on the store. Open Account/Menu to upload items.</p>`;
+
+            return;
+
         }
 
-        // 3 Images allocation parsing
-        let productImages = [];
-        if (imagesArray && Array.isArray(imagesArray) && imagesArray.length >= 3) {
-            productImages = imagesArray;
-        } else if (imageBase64) {
-            productImages.push(imageBase64); // Fallback standard format
+
+
+        currentProducts.forEach(product => {
+
+            grid.innerHTML += `
+
+                <div class="bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
+
+                    <img src="${product.imageUrl}" alt="${product.title}" class="w-full h-44 object-cover">
+
+                    <div class="p-4">
+
+                        <h3 class="font-extrabold text-sm truncate">${product.title}</h3>
+
+                        <p class="text-xs text-gray-400 mt-1 truncate">${product.description || 'Verified Quality'}</p>
+
+                        <div class="flex items-center justify-between mt-3">
+
+                            <span class="text-sm font-black text-orange-400">PKR ${product.price}</span>
+
+                            <span class="text-[8px] bg-slate-800 border border-gray-700 text-gray-400 px-2 py-1 rounded-full font-bold uppercase">COD</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        });
+
+    } catch (e) {
+
+        showNotification("Failed to connect to MT-Server database.", "error");
+
+    }
+
+}
+
+
+
+// Quantity Counter Engine Functions
+
+function changeDetailQuantity(amount) {
+
+    const qtyInput = document.getElementById('detail-quantity');
+
+    if (!qtyInput) return;
+
+    let currentQty = parseInt(qtyInput.value) || 1;
+
+    currentQty += amount;
+
+    if (currentQty < 1) currentQty = 1;
+
+    qtyInput.value = currentQty;
+
+}
+
+
+
+// Update Cart Quantity
+
+function updateCartQuantity(productId, amount) {
+
+    const item = cart.find(i => i.id === productId);
+
+    if (!item) return;
+
+    item.quantity += amount;
+
+    if (item.quantity < 1) item.quantity = 1;
+
+    
+
+    const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
+
+    document.getElementById('cart-count').textContent = totalItems;
+
+    
+
+    renderCart();
+
+}
+
+
+
+// Display Product Details
+
+function viewDetails(productId) {
+
+    const p = currentProducts.find(item => item.id === productId);
+
+    if (!p) return;
+
+
+
+    const container = document.getElementById('product-detail-content');
+
+    if (!container) return;
+
+    
+
+    let mediaSection = `
+
+        <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden max-h-[300px]">
+
+            <img src="${p.imageUrl}" class="object-contain max-h-[260px] w-auto h-auto rounded-xl">
+
+        </div>`;
+
+        
+
+    if(p.videoUrl) {
+
+        mediaSection = `
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden max-h-[300px]">
+
+                    <img src="${p.imageUrl}" class="object-contain max-h-[260px] w-auto h-auto rounded-xl">
+
+                </div>
+
+                <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden max-h-[300px]">
+
+                    <video src="${p.videoUrl}" controls class="object-contain max-h-[260px] w-full rounded-xl bg-black"></video>
+
+                </div>
+
+            </div>
+
+        `;
+
+    }
+
+
+
+    container.innerHTML = `
+
+        ${mediaSection}
+
+        
+
+        <div class="border-b border-gray-800 pb-4">
+
+            <h2 class="text-3xl font-black mb-2">${p.title}</h2>
+
+            <p class="text-xl font-bold text-orange-400 mb-4">PKR ${p.price}</p>
+
+            <p class="text-gray-300 text-sm leading-relaxed">${p.description || 'No additional details provided.'}</p>
+
+            
+
+            <div class="flex items-center gap-3 my-5 bg-slate-950/30 p-3 rounded-xl border border-gray-850 w-fit">
+
+                <span class="text-xs text-gray-400 font-bold uppercase tracking-wider">Select Qty:</span>
+
+                <div class="flex items-center bg-slate-950 border border-gray-800 rounded-xl overflow-hidden">
+
+                    <button onclick="changeDetailQuantity(-1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold transition">
+
+                        <i class="fa-solid fa-minus text-[10px]"></i>
+
+                    </button>
+
+                    <input type="number" id="detail-quantity" value="1" min="1" readonly class="w-10 bg-transparent text-center text-xs font-black text-orange-500 outline-none">
+
+                    <button onclick="changeDetailQuantity(1)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold transition">
+
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="space-y-3 mt-4">
+
+                <button onclick="addToCart('${p.id}')" class="w-full bg-slate-800 hover:bg-slate-700 border border-gray-700 text-white font-bold py-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
+
+                    <i class="fa-solid fa-cart-shopping"></i> Add to Cart (COD Delivery)
+
+                </button>
+
+                <button onclick="instantBuyNow('${p.id}')" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
+
+                    <i class="fa-solid fa-bag-shopping"></i> Buy Now (COD)
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="bg-slate-950/40 border border-gray-800 rounded-2xl p-5 space-y-3">
+
+            <h3 class="text-sm font-black text-orange-400 uppercase tracking-wider flex items-center gap-2">
+
+                <i class="fa-solid fa-store"></i> Merchant Hub Profile
+
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-300">
+
+                <div><span class="text-gray-500 block mb-0.5">Store Address:</span> <span class="font-semibold text-white">${p.address || 'Not Available'}</span></div>
+
+                <div><span class="text-gray-500 block mb-0.5">Contact Merchant:</span> <span class="font-semibold text-white">${p.contactNumber || 'Not Available'}</span></div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+
+    switchTab('detail');
+
+}
+
+
+
+// Instant Buy Now
+
+function instantBuyNow(productId) {
+
+    const p = currentProducts.find(item => item.id === productId);
+
+    if(!p) return;
+
+    
+
+    const qtyInput = document.getElementById('detail-quantity');
+
+    const selectedQty = qtyInput ? parseInt(qtyInput.value) : 1;
+
+    
+
+    cart = [{ ...p, quantity: selectedQty }];
+
+    document.getElementById('cart-count').textContent = selectedQty;
+
+    document.getElementById('cart-count').classList.remove('hidden');
+
+    
+
+    switchTab('cart');
+
+    showNotification("Redirected to Instant Checkout Form!");
+
+}
+
+
+
+// Upload Product Form Submit Handler (INSTANT ONE-CLICK FIX)
+
+document.getElementById('product-upload-form').addEventListener('submit', async (e) => {
+
+    e.preventDefault();
+
+
+
+    const imageInput = document.getElementById('p-image-file');
+
+    const videoInput = document.getElementById('p-video-file');
+
+    
+
+    if (!imageInput || !imageInput.files || imageInput.files.length < 3) {
+
+        showNotification("Please select at least 3 product photos from gallery.", "error");
+
+        return;
+
+    }
+
+
+
+    // Submit button ke click karte hi fast processing shuru
+
+    showNotification("Processing media files...", "success");
+
+
+
+    try {
+
+        // Convert all selected images to base64 synchronously on form submit
+
+        const imagePromises = Array.from(imageInput.files).map(file => fileToDataURL(file));
+
+        const imagesBase64Array = await Promise.all(imagePromises);
+
+
+
+        // Convert video if available
+
+        let finalVideoBase64 = "";
+
+        if (videoInput && videoInput.files && videoInput.files[0]) {
+
+            finalVideoBase64 = await fileToDataURL(videoInput.files[0]);
+
         }
 
-        const newProduct = {
-            id: 'PROD-' + Date.now(),
-            title,
-            price,
-            description,
-            imageUrl: productImages[0] || imageBase64, // Compatibility backward link
-            images: productImages, // Full array containing 3+ photos
-            videoUrl: videoBase64 || null,
-            transactionId,
-            paymentDetails,
-            address,
-            contactNumber,
-            sellerEmail,
-            status: 'pending' // Admin review approval required
+
+
+        const payload = {
+
+            title: document.getElementById('p-title').value,
+
+            price: document.getElementById('p-price').value,
+
+            description: document.getElementById('p-desc').value,
+
+            imageBase64: imagesBase64Array[0], // First image goes as primary view
+
+            videoBase64: finalVideoBase64,
+
+            transactionId: document.getElementById('p-txid').value,
+
+            paymentDetails: document.getElementById('p-payment-details').value,
+
+            address: document.getElementById('p-address').value,
+
+            contactNumber: document.getElementById('p-contact').value,
+
+            sellerEmail: document.getElementById('p-email').value
+
         };
 
-        products.push(newProduct);
 
-        // --- EMAIL SYSTEM: SUBMISSION REQUEST SENT TO ADMIN & SELLER ---
-        let emailAttachments = [];
-        productImages.forEach((imgBase64, index) => {
-            const parsed = parseBase64Attachment(imgBase64, `product-photo-${index + 1}.png`);
-            if (parsed) emailAttachments.push(parsed);
+
+        const res = await fetch('/api/products', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify(payload)
+
         });
 
-        if (videoBase64) {
-            const parsedVid = parseBase64Attachment(videoBase64, 'product-video.mp4');
-            if (parsedVid) emailAttachments.push(parsedVid);
+
+
+        const data = await res.json();
+
+        if(res.ok) {
+
+            showNotification("Submitted! Sent verification request to Admin.");
+
+            document.getElementById('product-upload-form').reset();
+
+            document.getElementById('img-preview-label').textContent = "Select 3 or More Images *";
+
+            document.getElementById('vid-preview-label').textContent = "Select Video (Optional)";
+
+            renderSellerListings();
+
+        } else {
+
+            showNotification(data.error || "Submission rejected", "error");
+
         }
 
-        const emailBody = `
-            <h2>New Product Verification Request</h2>
-            <p><strong>Title:</strong> ${title}</p>
-            <p><strong>Price:</strong> PKR ${price}</p>
-            <p><strong>Description:</strong> ${description || 'N/A'}</p>
-            <p><strong>Merchant Email:</strong> ${sellerEmail}</p>
-            <p><strong>Contact:</strong> ${contactNumber || 'N/A'}</p>
-            <p><strong>Warehouse Address:</strong> ${address || 'N/A'}</p>
-            <p><strong>TxID / Verification Fee Code:</strong> ${transactionId || 'N/A'}</p>
-            <p><strong>Payment Custom Details:</strong> ${paymentDetails || 'N/A'}</p>
-            <br>
-            <p><em>Note: System verified 3+ product gallery photo attachments below.</em></p>
-        `;
+    } catch(err) {
 
-        // Send to Admin & Carbon Copy (CC) to Seller
-        await transporter.sendMail({
-            from: '"MT Storefront System" <your-email@gmail.com>',
-            to: [ADMIN_EMAIL, sellerEmail].join(','),
-            subject: `🚨 Verification Pending: ${title} (PKR ${price})`,
-            html: emailBody,
-            attachments: emailAttachments
-        });
+        showNotification("Connection error or large file size.", "error");
 
-        // Auto-approve product for internal debugging or instant demonstration logic (Optional)
-        newProduct.status = 'approved'; 
-
-        res.status(201).json({ success: true, product: newProduct });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Internal processing error during media ingestion." });
     }
+
 });
 
-// ==========================================
-// API ROUTES: ORDERS & CHECKOUT ENGINE
-// ==========================================
 
-// 1. Submit a New COD Order Route
-app.post('/api/orders', async (req, res) => {
+
+// Render Seller Personal Listings
+
+async function renderSellerListings() {
+
+    const container = document.getElementById('seller-listings-container');
+
+    if (!container) return;
+
+    const sellerEmail = document.getElementById('p-email').value || (currentUser ? currentUser.email : '');
+
+    
+
+    if(!sellerEmail) {
+
+        container.innerHTML = `<p class="text-xs text-gray-500 text-center">Enter your verification email in the form above to retrieve your upload history.</p>`;
+
+        return;
+
+    }
+
+
+
     try {
-        const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
 
-        if (!items || items.length === 0) {
-            return res.status(400).json({ error: "Shopping basket validation failure." });
+        const res = await fetch(`/api/products/seller/${sellerEmail}`);
+
+        const list = await res.json();
+
+        container.innerHTML = '';
+
+
+
+        if(list.length === 0) {
+
+            container.innerHTML = `<p class="text-xs text-gray-500 text-center">No uploads recorded yet for this email.</p>`;
+
+            return;
+
         }
 
-        items.forEach(item => {
-            const newOrder = {
-                id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
-                title: item.title,
-                price: item.price,
-                quantity: item.quantity || 1,
-                buyerName,
-                buyerEmail,
-                buyerPhone,
-                buyerAddress,
-                sellerEmail: item.sellerEmail || ADMIN_EMAIL,
-                status: 'processing'
-            };
-            orders.push(newOrder);
+
+
+        list.forEach(p => {
+
+            const statusColor = p.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+
+            container.innerHTML += `
+
+                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex gap-4 items-center">
+
+                    <img src="${p.imageUrl}" class="w-16 h-16 rounded-xl object-cover">
+
+                    <div class="flex-grow min-w-0">
+
+                        <h4 class="font-extrabold text-sm truncate">${p.title}</h4>
+
+                        <p class="text-xs text-gray-400">PKR ${p.price}</p>
+
+                    </div>
+
+                    <span class="text-[9px] uppercase border px-2.5 py-1 rounded-full font-bold ${statusColor}">${p.status}</span>
+
+                </div>
+
+            `;
+
         });
 
-        res.json({ success: true });
+    } catch(e) {}
+
+}
+
+
+
+// User Dashboard Profile Update
+
+async function updateProfilePanel() {
+
+    const authBox = document.getElementById('auth-box');
+
+    const profilePanel = document.getElementById('profile-panel');
+
+
+
+    if (!currentUser) {
+
+        if(authBox) authBox.classList.remove('hidden');
+
+        if(profilePanel) profilePanel.classList.add('hidden');
+
+        return;
+
+    }
+
+
+
+    if(authBox) authBox.classList.add('hidden');
+
+    if(profilePanel) profilePanel.classList.remove('hidden');
+
+
+
+    document.getElementById('panel-email').textContent = currentUser.email;
+
+    document.getElementById('panel-role').textContent = `${currentAccountType} account`;
+
+    document.getElementById('panel-username').textContent = currentUser.username || currentUser.email.split('@')[0];
+
+    
+
+    const avatarImg = document.getElementById('avatar-image-display');
+
+    const avatarText = document.getElementById('avatar-text');
+
+    
+
+    if (currentUser.profileImage) {
+
+        avatarImg.src = currentUser.profileImage;
+
+        avatarImg.classList.remove('hidden');
+
+        avatarText.classList.add('hidden');
+
+    } else {
+
+        avatarImg.classList.add('hidden');
+
+        avatarText.classList.remove('hidden');
+
+        avatarText.textContent = currentUser.email.substring(0, 2).toUpperCase();
+
+    }
+
+
+
+    const orderContainer = document.getElementById('orders-summary-container');
+
+    if (!orderContainer) return;
+
+    orderContainer.innerHTML = '';
+
+
+
+    try {
+
+        const res = await fetch(`/api/orders/user/${currentUser.email}`);
+
+        const orders = await res.json();
+
+
+
+        if (orders.length === 0) {
+
+            orderContainer.innerHTML = `<p class="text-xs text-gray-500 text-center">No orders recorded yet. Start shopping!</p>`;
+
+            return;
+
+        }
+
+
+
+        orders.forEach(o => {
+
+            orderContainer.innerHTML += `
+
+                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center">
+
+                    <div>
+
+                        <h5 class="font-extrabold text-sm">${o.title} (Qty: ${o.quantity || 1})</h5>
+
+                        <p class="text-xs text-gray-400">ID: ${o.id} • PKR ${o.price * (o.quantity || 1)}</p>
+
+                        <p class="text-[10px] text-gray-500 mt-1">Shipped to: ${o.buyerAddress}</p>
+
+                    </div>
+
+                    <span class="text-[10px] font-bold tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/30 px-3 py-1 rounded-full uppercase">${o.status}</span>
+
+                </div>
+
+            `;
+
+        });
+
     } catch (e) {
-        res.status(500).json({ error: "Order pipeline breakdown." });
+
+        orderContainer.innerHTML = `<p class="text-xs text-rose-500">Failed to sync orders.</p>`;
+
     }
-});
 
-// 2. Fetch User Specific Orders History
-app.get('/api/orders/user/:email', (req, res) => {
-    const userOrders = orders.filter(o => o.buyerEmail === req.params.email || o.sellerEmail === req.params.email);
-    res.json(userOrders);
-});
+}
 
-// 3. Real-time Order Cancellation & Dual-Email Alert Routing
-app.post('/api/orders/cancel', async (req, res) => {
-    try {
-        const { orderId, userEmail } = req.body;
-        
-        const orderIndex = orders.findIndex(o => o.id === orderId);
-        if (orderIndex === -1) {
-            return res.status(404).json({ success: false, error: "Order reference ID not found." });
+
+
+function triggerProfileImageUpload() {
+
+    document.getElementById('hidden-profile-image-input').click();
+
+}
+
+
+
+async function uploadProfileImageFile(input) {
+
+    const file = input.files[0];
+
+    if (!file || !currentUser) return;
+
+
+
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+
+        const base64Data = e.target.result;
+
+        try {
+
+            const res = await fetch('/api/users/update', {
+
+                method: 'POST',
+
+                headers: { 'Content-Type': 'application/json' },
+
+                body: JSON.stringify({ email: currentUser.email, profileImage: base64Data })
+
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+
+                currentUser.profileImage = base64Data;
+
+                updateProfilePanel();
+
+                showNotification("Profile display picture updated!");
+
+            }
+
+        } catch (err) {
+
+            showNotification("Failed to upload profile picture.", "error");
+
         }
 
-        const targetOrder = orders[orderIndex];
-        
-        // Status updates to cancelled state
-        targetOrder.status = 'cancelled';
+    };
 
-        // --- DUAL EMAIL DISPATCH: SEND CANCELLATION NOTICE TO ADMIN AND SELLER ---
-        const cancelEmailBody = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e11d48; border-radius: 12px;">
-                <h2 style="color: #e11d48;">🛑 Order Cancelled Notification</h2>
-                <p>Order ID <strong>#${targetOrder.id}</strong> ka status real-time update karke <strong>CANCELLED</strong> kar diya gaya hai.</p>
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                <p><strong>Product Name:</strong> ${targetOrder.title}</p>
-                <p><strong>Quantity Ordered:</strong> ${targetOrder.quantity}</p>
-                <p><strong>Total Bill Cost:</strong> PKR ${targetOrder.price * targetOrder.quantity}</p>
-                <p><strong>Buyer Name:</strong> ${targetOrder.buyerName}</p>
-                <p><strong>Buyer Contact:</strong> ${targetOrder.buyerPhone}</p>
-                <p><strong>Shipping Destination:</strong> ${targetOrder.buyerAddress}</p>
-                <p><strong>Action Executed By:</strong> ${userEmail}</p>
-            </div>
-        `;
+    reader.readAsDataURL(file);
 
-        // Dispatch alerts simultaneously
-        await transporter.sendMail({
-            from: '"MT Order Tracker" <your-email@gmail.com>',
-            to: [ADMIN_EMAIL, targetOrder.sellerEmail].join(','),
-            subject: `🛑 Cancelled: Order #${targetOrder.id} - ${targetOrder.title}`,
-            html: cancelEmailBody
+}
+
+
+
+async function editProfileUsername() {
+
+    if (!currentUser) return;
+
+    const currentName = document.getElementById('panel-username').textContent;
+
+    const newName = prompt("Enter your new Username:", currentName);
+
+    
+
+    if (newName === null || newName.trim() === "") return;
+
+
+
+    try {
+
+        const res = await fetch('/api/users/update', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify({ email: currentUser.email, username: newName.trim() })
+
         });
 
-        res.json({ success: true, message: "Order cancellation synchronized successfully across nodes." });
+        const data = await res.json();
+
+        if (data.success) {
+
+            currentUser.username = data.user.username;
+
+            updateProfilePanel();
+
+            showNotification("Username updated successfully!");
+
+        }
+
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, error: "Database mapping cancellation fault." });
+
+        showNotification("Failed to save changes.", "error");
+
     }
-});
 
-// ==========================================
-// USER CONFIG & ACCOUNT SYSTEM ROUTES
-// ==========================================
+}
 
-app.post('/api/users/login', (req, res) => {
-    const { email } = req.body;
-    let user = users.find(u => u.email === email);
-    if (!user) {
-        user = { email, username: email.split('@')[0], profileImage: null };
-        users.push(user);
+
+
+// Authentication Logic
+
+async function handleAuth() {
+
+    const email = document.getElementById('auth-email').value;
+
+    const password = document.getElementById('auth-password').value;
+
+
+
+    if (!email || !password) {
+
+        showNotification("Please fill out complete account parameters.", "error");
+
+        return;
+
     }
-    res.json({ success: true, user });
-});
 
-app.post('/api/users/update', (req, res) => {
-    const { email, username, profileImage } = req.body;
-    let user = users.find(u => u.email === email);
-    if (user) {
-        if (username) user.username = username;
-        if (profileImage) user.profileImage = profileImage;
-        return res.json({ success: true, user });
+
+
+    try {
+
+        const res = await fetch('/api/users/login', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify({ email })
+
+        });
+
+        const data = await res.json();
+
+        if(data.success) {
+
+            currentUser = data.user;
+
+            showNotification(`Welcome back, ${currentUser.username || email}!`);
+
+            updateProfilePanel();
+
+        }
+
+    } catch (e) {
+
+        showNotification("Authentication Server Down", "error");
+
     }
-    res.status(404).json({ error: "User identity context lost." });
-});
 
-// Fallback HTML page server trigger
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+}
 
-app.listen(PORT, () => console.log(`🚀 MT-Server dynamic stack working smoothly on port ${PORT}`));
+
+
+function logout() {
+
+    currentUser = null;
+
+    const badge = document.getElementById('user-status-badge');
+
+    if (badge) badge.classList.add('hidden');
+
+    showNotification("Logged out successfully.");
+
+    updateProfilePanel();
+
+    switchTab('home');
+
+}
+
+
+
+// Message Desk Simulation
+
+function sendMessage() {
+
+    const input = document.getElementById('chat-input');
+
+    const box = document.getElementById('chat-box');
+
+    
+
+    if(!input || !input.value.trim()) return;
+
+
+
+    box.innerHTML += `
+
+        <div class="bg-orange-500 text-slate-950 p-3 rounded-2xl max-w-[80%] self-end ml-auto font-semibold">
+
+            ${input.value}
+
+        </div>
+
+    `;
+
+    
+
+    const query = input.value.toLowerCase();
+
+    input.value = '';
+
+
+
+    setTimeout(() => {
+
+        let reply = "Your message has been routed to MT Central Command. Our live representative will respond shortly.";
+
+        if(query.includes("order") || query.includes("delivery")) {
+
+            reply = "To track orders, simply click the 'Account' button down in the dock to view live processing statuses.";
+
+        } else if(query.includes("publish") || query.includes("verify") || query.includes("50")) {
+
+            reply = "Publishing verification is automated. Please ensure you sent the requested fees and typed the exact TxID in the Merchant Dashboard.";
+
+        }
+
+
+
+        box.innerHTML += `
+
+            <div class="bg-slate-800 p-3 rounded-2xl max-w-[80%] text-gray-200">
+
+                ${reply}
+
+            </div>
+
+        `;
+
+        box.scrollTop = box.scrollHeight;
+
+    }, 1000);
+
+}
+
+
+
+// Shopping Cart Controller
+
+function addToCart(productId) {
+
+    const p = currentProducts.find(item => item.id === productId);
+
+    if(!p) return;
+
+
+
+    const qtyInput = document.getElementById('detail-quantity');
+
+    const selectedQty = qtyInput ? parseInt(qtyInput.value) : 1;
+
+
+
+    const existing = cart.find(item => item.id === productId);
+
+    if(existing) {
+
+        existing.quantity += selectedQty;
+
+    } else {
+
+        cart.push({ ...p, quantity: selectedQty });
+
+    }
+
+
+
+    const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
+
+    document.getElementById('cart-count').textContent = totalItems;
+
+    document.getElementById('cart-count').classList.remove('hidden');
+
+    showNotification(`Added ${p.title} (${selectedQty}x) to checkout cart!`);
+
+}
+
+
+
+function renderCart() {
+
+    const container = document.getElementById('cart-items');
+
+    if (!container) return;
+
+    container.innerHTML = '';
+
+
+
+    if (cart.length === 0) {
+
+        container.innerHTML = `<p class="text-center text-gray-500 py-8">Your shopping basket is empty.</p>`;
+
+        return;
+
+    }
+
+
+
+    cart.forEach(item => {
+
+        container.innerHTML += `
+
+            <div class="bg-slate-900/60 p-4 rounded-2xl border border-gray-850 flex gap-4 items-center justify-between">
+
+                <div class="flex gap-4 items-center">
+
+                    <img src="${item.imageUrl}" class="w-12 h-12 rounded-xl object-cover">
+
+                    <div>
+
+                        <h4 class="font-extrabold text-sm">${item.title}</h4>
+
+                        <p class="text-xs text-gray-400 mb-1">Price: PKR ${item.price}</p>
+
+                        <div class="flex items-center bg-slate-950 border border-gray-800 rounded-lg overflow-hidden w-fit">
+
+                            <button onclick="updateCartQuantity('${item.id}', -1)" class="px-2 py-0.5 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">-</button>
+
+                            <span class="px-3 text-xs font-bold text-orange-400">${item.quantity}</span>
+
+                            <button onclick="updateCartQuantity('${item.id}', 1)" class="px-2 py-0.5 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">+</button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <button onclick="removeFromCart('${item.id}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button>
+
+            </div>
+
+        `;
+
+    });
+
+}
+
+
+
+function removeFromCart(id) {
+
+    cart = cart.filter(item => item.id !== id);
+
+    if(cart.length === 0) {
+
+        document.getElementById('cart-count').classList.add('hidden');
+
+    } else {
+
+        const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
+
+        document.getElementById('cart-count').textContent = totalItems;
+
+    }
+
+    renderCart();
+
+}
+
+
+
+async function checkout() {
+
+    if(cart.length === 0) {
+
+        showNotification("Your cart is completely empty.", "error");
+
+        return;
+
+    }
+
+
+
+    const payload = {
+
+        items: cart,
+
+        buyerName: document.getElementById('buyer-name').value,
+
+        buyerEmail: document.getElementById('buyer-email').value,
+
+        buyerPhone: document.getElementById('buyer-phone').value,
+
+        buyerAddress: document.getElementById('buyer-address').value
+
+    };
+
+
+
+    if(!payload.buyerName || !payload.buyerEmail || !payload.buyerPhone || !payload.buyerAddress) {
+
+        showNotification("Please fill the shipping data correctly.", "error");
+
+        return;
+
+    }
+
+
+
+    try {
+
+        const res = await fetch('/api/orders', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify(payload)
+
+        });
+
+
+
+        if(res.ok) {
+
+            showNotification("Success! Ordered via Cash on Delivery (COD).");
+
+            cart = [];
+
+            document.getElementById('cart-count').classList.add('hidden');
+
+            renderCart();
+
+            switchTab('home');
+
+        } else {
+
+            showNotification("Order submission failed.", "error");
+
+        }
+
+    } catch(e) {
+
+        showNotification("Network timeout during checkout.", "error");
+
+    }
+
+}
+
+
+
+window.onload = () => {
+
+    loadProducts();
+
+};
+
+main.js
+
