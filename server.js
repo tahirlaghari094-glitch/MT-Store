@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer'); // 🚀 Nodemailer integrated
+const nodemailer = require('nodemailer'); 
 
 const app = express();
 
@@ -29,7 +29,7 @@ const sendHtmlEmail = async (to, subject, htmlContent) => {
     try {
         const mailOptions = {
             from: process.env.GMAIL_USER,
-            to: to, // Automatically sends to any target email
+            to: to, 
             subject: subject,
             html: htmlContent
         };
@@ -76,14 +76,15 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
-// Product Schema
+// Product Schema (3 Images Array integration ke sath)
 const ProductSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     title: String,
     price: Number,
     description: String,
     category: String,
-    imageUrl: String,
+    imageUrl: String,          // Primary image mapping (for backward compatibility)
+    images: [String],          // Multi-photo showcase grid storage (Array for 3 images)
     videoUrl: String,
     paymentDetails: String,
     address: String,
@@ -181,6 +182,7 @@ app.get('/api/products/seller/:email', async (req, res) => {
 
 app.get('/api/orders/user/:email', async (req, res) => {
     try {
+        // Find orders where the user is either the buyer or the seller
         const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
         
         const updatedOrders = [];
@@ -188,7 +190,7 @@ app.get('/api/orders/user/:email', async (req, res) => {
             const prod = await Product.findOne({ id: order.productId });
             updatedOrders.push({
                 ...order._doc,
-                productImage: prod ? prod.imageUrl : ''
+                productImage: prod ? (prod.images && prod.images.length > 0 ? prod.images[0] : prod.imageUrl) : ''
             });
         }
         res.json(updatedOrders);
@@ -198,19 +200,38 @@ app.get('/api/orders/user/:email', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, imageBase64, videoBase64, paymentDetails, address, contactNumber, sellerEmail, transactionId } = req.body;
-    if (!title || !price || !imageBase64 || !paymentDetails || !transactionId) {
+    const { title, price, description, category, imageBase64, imagesArray, videoBase64, paymentDetails, address, contactNumber, sellerEmail, transactionId } = req.body;
+    
+    // Check if either imagesArray or single imageBase64 exists
+    if (!title || !price || (!imagesArray && !imageBase64) || !paymentDetails || !transactionId) {
         return res.status(400).json({ error: "Required details or verification transaction is missing." });
     }
 
     try {
         const productId = Date.now().toString();
 
+        // Safe array extraction logic
+        let productImages = [];
+        if (imagesArray && Array.isArray(imagesArray) && imagesArray.length >= 3) {
+            productImages = imagesArray;
+        } else if (imageBase64) {
+            productImages.push(imageBase64);
+        }
+
         const newProduct = new Product({
             id: productId,
-            title, price: parseFloat(price), description, category: category || 'General',
-            imageUrl: imageBase64, videoUrl: videoBase64 || '',
-            paymentDetails, address, contactNumber, sellerEmail, transactionId,
+            title, 
+            price: parseFloat(price), 
+            description, 
+            category: category || 'General',
+            imageUrl: productImages[0] || imageBase64, 
+            images: productImages,
+            videoUrl: videoBase64 || '',
+            paymentDetails, 
+            address, 
+            contactNumber, 
+            sellerEmail, 
+            transactionId,
             status: 'pending'
         });
 
@@ -224,6 +245,8 @@ app.post('/api/products', async (req, res) => {
                 <p><strong>Seller:</strong> ${sellerEmail}</p>
                 <p><strong>Product:</strong> ${title}</p>
                 <p><strong>TXID:</strong> <span style="background-color: #1e293b; padding: 4px 8px; border-radius: 4px; color: #facc15;">${transactionId}</span></p>
+                <br>
+                <p><em>Check dashboard or server database log context to analyze 3+ media visuals submitted by merchant.</em></p>
                 <div style="margin: 24px 0; text-align: center;">
                     <a href="${approveUrl}" style="background-color: #22c55e; color: #000000; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-block;">
                         ✅ Verify & Approve Product Live
@@ -265,11 +288,8 @@ app.post('/api/orders', async (req, res) => {
     try {
         for (const item of items) {
             const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-            
-            // Safe fallback logic for item identifier string matching
             const targetProductId = item.id || item._id;
 
-            // Secure lookup for product listing to match vendor ownership
             const linkedProduct = await Product.findOne({ id: targetProductId.toString() });
             const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
 
@@ -306,11 +326,9 @@ app.post('/api/orders', async (req, res) => {
                 </div>
             `;
 
-            // Deliveries pipeline
             await sendHtmlEmail(buyerEmail, `🛍️ MT Store Order Confirmation: ${orderId}`, detailedOrderHtml);
             await sendHtmlEmail(ADMIN_EMAIL, `🔔 Platform Notification: Order ${orderId}`, detailedOrderHtml);
             
-            // Dynamic check for successful seller matching extraction
             if (sellerTargetEmail) {
                 await sendHtmlEmail(sellerTargetEmail.toLowerCase(), `💼 New Order Received for Your Product: ${orderId}`, detailedOrderHtml);
             }
@@ -323,6 +341,64 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🛑 REAL-TIME ORDER CANCELLATION ENGINE
+// ==========================================
+app.post('/api/orders/cancel', async (req, res) => {
+    try {
+        const { orderId, userEmail } = req.body;
+        
+        const order = await Order.findOne({ id: orderId });
+        if (!order) {
+            return res.status(404).json({ success: false, error: "Order context not found." });
+        }
+
+        // Status update to Cancelled state inside MongoDB database
+        order.status = 'Cancelled';
+        await order.save();
+
+        // Fetch linked product structure to pinpoint the seller matching identity
+        const linkedProduct = await Product.findOne({ id: order.productId });
+        const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
+
+        // Structured email format for cancellation transmission layout
+        const cancelEmailHtml = `
+            <div style="font-family: Arial, sans-serif; border: 1px solid #ef4444; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0f172a; color: #ffffff;">
+                <h2 style="color: #ef4444; margin-top: 0;">🛑 Order Cancelled Alert</h2>
+                <p>Order ID <strong>#${order.id}</strong> ka status update karke database me <strong>CANCELLED</strong> kar diya gaya hai.</p>
+                <hr style="border: 0; border-top: 1px solid #1e293b; margin: 16px 0;">
+                <p><strong>Product Name:</strong> ${order.title}</p>
+                <p><strong>Quantity:</strong> ${order.quantity}</p>
+                <p><strong>Total Bill Amount:</strong> <span style="color: #facc15;">PKR ${order.price * order.quantity}</span></p>
+                <p><strong>Buyer Name:</strong> ${order.buyerName}</p>
+                <p><strong>Buyer Contact:</strong> ${order.buyerPhone}</p>
+                <p><strong>Shipping Location:</strong> ${order.buyerAddress}</p>
+                <br>
+                <p style="color: #94a3b8; font-size: 12px;">Action triggered securely via account identity: ${userEmail}</p>
+            </div>
+        `;
+
+        // 1. Send cancellation alert to Admin
+        await sendHtmlEmail(ADMIN_EMAIL, `🛑 Cancelled: Order #${order.id} - ${order.title}`, cancelEmailHtml);
+
+        // 2. Send cancellation alert to Seller (agar product linked seller email validation true ho)
+        if (sellerTargetEmail) {
+            await sendHtmlEmail(sellerTargetEmail.toLowerCase(), `🛑 Cancelled: Order #${order.id} for Your Product`, cancelEmailHtml);
+        }
+
+        // 3. Optional: Send cancellation acknowledgment to Buyer as well
+        if (order.buyerEmail) {
+            await sendHtmlEmail(order.buyerEmail.toLowerCase(), `🛑 Your Order #${order.id} Has Been Cancelled`, cancelEmailHtml);
+        }
+
+        res.json({ success: true, message: "Order cancellation broadcasted to all stakeholders successfully." });
+    } catch (err) {
+        console.error("❌ Cancellation endpoint failure:", err);
+        res.status(500).json({ success: false, error: "Database interface mapping cancellation fault." });
+    }
+});
+
+// Serve frontend paths gracefully
 app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(rootPath, 'index.html'));
 });
