@@ -250,9 +250,143 @@ function viewDetails(productId) {
                 <div><span class="text-gray-500 block mb-0.5">Contact Merchant:</span> <span class="font-semibold text-white">${p.contactNumber || 'Not Available'}</span></div>
             </div>
         </div>
+
+        <!-- INTEGRATED USER REVIEWS & COMMENT BOX SECTION -->
+        <div class="bg-slate-950/40 border border-gray-800 rounded-2xl p-5 mt-4 space-y-4">
+            <h3 class="text-sm font-black text-orange-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-comments"></i> Public Reviews & Feedback
+            </h3>
+            
+            <!-- Comment Submission Form -->
+            <div class="space-y-2">
+                <textarea id="review-comment-input" placeholder="Share your experience or ask a question about this product..." rows="3" class="w-full bg-slate-900 border border-gray-800 rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:border-orange-500 outline-none resize-none transition"></textarea>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-1 text-xs text-amber-400">
+                        <span class="text-gray-500 mr-1">Rating:</span>
+                        <select id="review-rating-select" class="bg-slate-900 border border-gray-800 rounded px-2 py-0.5 text-white outline-none">
+                            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4/5)</option>
+                            <option value="3">⭐⭐⭐ (3/5)</option>
+                            <option value="2">⭐⭐ (2/5)</option>
+                            <option value="1">⭐ (1/5)</option>
+                        </select>
+                    </div>
+                    <button onclick="submitProductReview('${p.id}')" class="bg-orange-500 hover:bg-orange-600 text-slate-950 text-xs font-black px-4 py-2 rounded-xl transition">Submit Review</button>
+                </div>
+            </div>
+
+            <!-- Dynamic Reviews List Container -->
+            <div id="product-reviews-list" class="space-y-3 pt-2 max-h-[250px] overflow-y-auto hidden">
+                <!-- Comments will be injected here dynamically -->
+            </div>
+            <p id="no-reviews-placeholder" class="text-center text-xs text-gray-500 py-4">No reviews posted yet. Be the first to review!</p>
+        </div>
     `;
 
     switchTab('detail');
+    loadProductReviews(p.id);
+}
+
+// Fetch and Render Reviews dynamically
+async function loadProductReviews(productId) {
+    const listContainer = document.getElementById('product-reviews-list');
+    const placeholder = document.getElementById('no-reviews-placeholder');
+    if (!listContainer) return;
+
+    try {
+        const res = await fetch(`/api/products/${productId}/reviews`);
+        if (res.ok) {
+            const reviews = await res.json();
+            if (reviews && reviews.length > 0) {
+                placeholder.classList.add('hidden');
+                listContainer.classList.remove('hidden');
+                listContainer.innerHTML = '';
+                
+                reviews.forEach(r => {
+                    const stars = '⭐'.repeat(parseInt(r.rating) || 5);
+                    listContainer.innerHTML += `
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-gray-850/60 text-xs space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-extrabold text-orange-400">${r.username || 'Anonymous Buyer'}</span>
+                                <span class="text-[10px] text-gray-500">${r.date || 'Just now'}</span>
+                            </div>
+                            <div class="text-[10px] text-amber-400">${stars}</div>
+                            <p class="text-gray-300 leading-relaxed mt-1">${r.comment}</p>
+                        </div>
+                    `;
+                });
+                return;
+            }
+        }
+    } catch(e) {}
+    
+    // Fallback/Placeholder if API is not setup or empty
+    placeholder.classList.remove('hidden');
+    listContainer.classList.add('hidden');
+}
+
+// Handle review form submission
+async function submitProductReview(productId) {
+    const commentInput = document.getElementById('review-comment-input');
+    const ratingSelect = document.getElementById('review-rating-select');
+    
+    if (!commentInput || !commentInput.value.trim()) {
+        showNotification("Please write a comment before submitting.", "error");
+        return;
+    }
+
+    const payload = {
+        productId: productId,
+        comment: commentInput.value.trim(),
+        rating: ratingSelect ? ratingSelect.value : "5",
+        username: currentUser ? (currentUser.username || currentUser.email.split('@')[0]) : "Anonymous Buyer"
+    };
+
+    try {
+        const res = await fetch(`/api/products/${productId}/reviews`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showNotification("Review posted successfully!");
+            commentInput.value = '';
+            loadProductReviews(productId);
+        } else {
+            // Local mockup UI update fallback if backend route doesn't exist yet
+            showNotification("Review added locally.");
+            appendLocalReview(payload);
+            commentInput.value = '';
+        }
+    } catch(err) {
+        // Safe UI render if network/mock environment is used
+        appendLocalReview(payload);
+        commentInput.value = '';
+    }
+}
+
+// Local UI Fallback Helper
+function appendLocalReview(payload) {
+    const listContainer = document.getElementById('product-reviews-list');
+    const placeholder = document.getElementById('no-reviews-placeholder');
+    if (!listContainer) return;
+
+    placeholder.classList.add('hidden');
+    listContainer.classList.remove('hidden');
+    
+    const stars = '⭐'.repeat(parseInt(payload.rating));
+    const newReviewHtml = `
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-gray-850/60 text-xs space-y-1">
+            <div class="flex justify-between items-center">
+                <span class="font-extrabold text-orange-400">${payload.username}</span>
+                <span class="text-[10px] text-gray-500">Just now</span>
+            </div>
+            <div class="text-[10px] text-amber-400">${stars}</div>
+            <p class="text-gray-300 leading-relaxed mt-1">${payload.comment}</p>
+        </div>
+    `;
+    listContainer.innerHTML = newReviewHtml + listContainer.innerHTML;
 }
 
 // Instant Buy Now (FIXED FLOW AND UI SYNC)
