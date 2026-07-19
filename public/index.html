@@ -57,7 +57,7 @@
         </div>
         
         <div class="relative">
-            <button onclick="toggleDropdown()" class="w-9 h-9 bg-slate-900 border border-gray-800 rounded-full flex items-center justify-center hover:border-gray-700 transition">
+            <button onclick="toggleDropdown()" class="w-9 h-9 bg-slate-900 border border-gray-850 rounded-full flex items-center justify-center hover:border-gray-700 transition">
                 <i class="fa-solid fa-ellipsis-vertical text-gray-400 text-sm"></i>
             </button>
             <!-- DROPDOWN OPTIONS MENU -->
@@ -136,7 +136,7 @@
                     </div>
 
                     <div class="border-t border-gray-900 pt-3 mt-2 space-y-2">
-                        <span class="text-[10px] text-orange-400 font-bold block uppercase tracking-wider">Verification Fee Parameters (PKR 50)</span>
+                        <span class="text-[10px] text-orange-400 font-bold block uppercase tracking-wider">VERIFICATION FEE PARAMETERS (PKR 50) (Send to 03113841402)</span>
                         <input type="text" id="p-txid" placeholder="JazzCash / EasyPaisa Transaction ID *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                         <input type="text" id="p-payment-details" placeholder="Sender Account Number / Title Name *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                     </div>
@@ -198,7 +198,7 @@
                 <button onclick="handleAuth()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3 rounded-xl text-xs transition uppercase">Access / Create Profile</button>
             </div>
 
-            <!-- PROFILE PANEL (INCLUDES PLACED ORDERS WITH NEW CANCEL BUTTON) -->
+            <!-- PROFILE PANEL -->
             <div id="profile-panel" class="hidden bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-4">
                 <div class="flex items-center gap-4">
                     <div class="relative cursor-pointer group" onclick="triggerProfileImageUpload()">
@@ -222,7 +222,8 @@
                 </div>
 
                 <div class="border-t border-gray-900 pt-3 space-y-2">
-                    <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider">Your Placed Orders Summary</h4>
+                    <!-- Target ID mapped for context toggles on profile dashboards -->
+                    <h4 id="placed-orders-title-header" class="text-xs font-black text-gray-400 uppercase tracking-wider">Your Placed Orders Summary</h4>
                     <div id="orders-summary-container" class="space-y-2">
                         <!-- Dynamic personal orders container -->
                     </div>
@@ -232,25 +233,28 @@
 
         <!-- 6. MT HUB CHAT MESSAGES VIEW -->
         <div id="messages-view" class="tab-view flex flex-col h-[75vh] bg-slate-950 border border-gray-900 rounded-3xl overflow-hidden shadow-2xl">
-            <div class="bg-slate-900 border-b border-gray-850 p-4 flex items-center gap-3">
-                <div class="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 font-bold text-xs">MT</div>
-                <div>
-                    <h3 class="font-extrabold text-xs">Central Command Support</h3>
-                    <p class="text-[9px] text-emerald-400 flex items-center gap-1 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Network Router Online</p>
+            <!-- Requirement Checklist: Only allowed to render box inside this message wrapper div -->
+            <div id="central-command-floating-support" class="flex flex-col h-full justify-between">
+                <div class="bg-slate-900 border-b border-gray-850 p-4 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 font-bold text-xs">MT</div>
+                    <div>
+                        <h4 class="font-extrabold text-xs">Central Command Support</h4>
+                        <p class="text-[9px] text-emerald-400 flex items-center gap-1 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Network Router Online</p>
+                    </div>
                 </div>
-            </div>
-            
-            <div id="chat-box" class="flex-grow p-4 overflow-y-auto flex flex-col gap-3 text-xs">
-                <div class="bg-slate-900 p-3 rounded-2xl max-w-[85%] text-gray-300 leading-relaxed">
-                    Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
+                
+                <div id="chat-box" class="flex-grow p-4 overflow-y-auto flex flex-col gap-3 text-xs">
+                    <div class="bg-slate-900 p-3 rounded-2xl max-w-[85%] text-gray-300 leading-relaxed">
+                        Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
+                    </div>
                 </div>
-            </div>
 
-            <div class="p-3 border-t border-gray-850 bg-slate-900 flex gap-2">
-                <input type="text" id="chat-input" placeholder="Type support response query..." onkeypress="if(event.key==='Enter') sendMessage()" class="flex-grow bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-orange-500 transition">
-                <button onclick="sendMessage()" class="bg-orange-500 hover:bg-orange-600 text-slate-950 w-11 h-11 rounded-xl flex items-center justify-center shadow-md transition shrink-0">
-                    <i class="fa-solid fa-paper-plane text-sm"></i>
-                </button>
+                <div class="p-3 border-t border-gray-850 bg-slate-900 flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Type support response query..." onkeypress="if(event.key==='Enter') sendMessage()" class="flex-grow bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-orange-500 transition">
+                    <button onclick="sendMessage()" class="bg-orange-500 hover:bg-orange-600 text-slate-950 w-11 h-11 rounded-xl flex items-center justify-center shadow-md transition shrink-0">
+                        <i class="fa-solid fa-paper-plane text-sm"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
