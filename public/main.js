@@ -1,113 +1,192 @@
-const express = require('express');
-const nodemailer = require('nodemailer');
-const path = require('path');
-const jwt = require('jsonwebtoken');
+// Initialization lifecycle event bindings
+document.addEventListener("DOMContentLoaded", () => {
+    checkAuthenticationStatus();
+    setupAttachmentLogic();
+    setupModalInterface();
+});
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || "mt_secure_core_token_hash_engine_2026";
+// Permanent Session Checking System (Website band hone par ya refresh hone par login save rakhega)
+function checkAuthenticationStatus() {
+    const savedToken = localStorage.getItem("mt_auth_token");
+    const mainApp = document.getElementById("mainAppStructure");
+    const authBox = document.getElementById("authContainer");
+    const navBar = document.getElementById("appBottomNavbar");
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '/')));
+    if (savedToken) {
+        // Automatically retain active system access
+        mainApp.style.display = "block";
+        navBar.style.display = "flex";
+        authBox.style.display = "none";
+        fetchRealProducts(); // Load real data items immediately
+    } else {
+        // Enforce secure credentials lock panel
+        mainApp.style.display = "none";
+        navBar.style.display = "none";
+        authBox.style.display = "block";
+    }
+}
 
-// Secure Email SMTP Channel Configuration
-const emailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER || 'lagharitahir08@gmail.com',
-        pass: process.env.EMAIL_PASS || 'your-app-password-here'
+// Login Process Execution Handler
+document.getElementById("authSubmitBtn").addEventListener("click", async () => {
+    const email = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const result = await response.json();
+
+        if (response.ok && result.token) {
+            // Save token inside local storage memory permanently until manual logout action
+            localStorage.setItem("mt_auth_token", result.token);
+            checkAuthenticationStatus();
+        } else {
+            alert("Authentication failed: " + result.message);
+        }
+    } catch (err) {
+        alert("Server communication runtime error.");
     }
 });
 
-// Runtime Array simulating real persistent DB elements storage memory
-let realProductsDatabase = [
-    { id: "p1", name: "GMT Watch (Qty: 1)", price: 500, storeRef: "Admin Managed" },
-    { id: "p2", name: "Tissot Chronograph Special", price: 2500, storeRef: "Admin Managed" }
-];
+// Explicit Manual Logout Sequence Handler
+function executeAppLogout() {
+    localStorage.removeItem("mt_auth_token");
+    checkAuthenticationStatus();
+}
 
-// Authorization Middleware verifying structural token strings
-function verifyUserToken(req, res, next) {
-    const bearerHeader = req.headers['authorization'];
-    if (!bearerHeader) return res.status(401).json({ message: "Access keys unauthorized." });
+// Real Fetch Stream Layer to fetch items securely without data duplication
+async function fetchRealProducts() {
+    const container = document.getElementById("realProductsDynamicContainer");
+    if (!container) return;
 
-    const token = bearerHeader.split(' ')[1];
-    jwt.verify(token, JWT_SECRET, (err, decodedData) => {
-        if (err) return res.status(403).json({ message: "Invalid session authority parameters." });
-        req.userData = decodedData;
-        next();
+    try {
+        const response = await fetch('/api/products/uploaded', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem("mt_auth_token")}` }
+        });
+        const products = await response.json();
+
+        // FIX: Clear layout container area buffer to avoid showing duplicate multiple orders listing
+        container.innerHTML = "";
+
+        if (products.length === 0) {
+            container.innerHTML = `<p style="color:#9ca3af; text-align:center; font-size:14px; padding:20px;">No products uploaded yet.</p>`;
+            return;
+        }
+
+        // Loop array values directly ensuring only exact counts map visually onto dashboard
+        products.forEach(item => {
+            const card = document.createElement("div");
+            card.className = "order-item";
+            card.innerHTML = `
+                <div>
+                    <strong style="display:block; font-size:15px; color:#ffffff;">${item.name}</strong>
+                    <span style="color:#9ca3af; font-size:13px;">PKR ${item.price}</span><br>
+                    <span style="color:#6b7280; font-size:11px;">Ref: ${item.storeRef || 'Seller Asset'}</span>
+                </div>
+                <button class="cancel-btn" onclick="deleteUploadedProduct('${item._id || item.id}')">Cancel</button>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        container.innerHTML = `<p style="color:#ef4444; text-align:center; font-size:13px;">Error synchronizing server resources.</p>`;
+    }
+}
+
+// Modal Toggle Controllers Setup
+function setupModalInterface() {
+    const modal = document.getElementById("productUploadModal");
+    
+    document.getElementById("openUploadModalBtn").addEventListener("click", () => modal.style.display = "flex");
+    document.getElementById("closeUploadModalBtn").addEventListener("click", () => modal.style.display = "none");
+
+    document.getElementById("saveProductBtn").addEventListener("click", async () => {
+        const name = document.getElementById("newProdName").value;
+        const price = document.getElementById("newProdPrice").value;
+
+        if (!name || !price) return alert("Please complete both input fields.");
+
+        try {
+            const response = await fetch('/api/products/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem("mt_auth_token")}`
+                },
+                body: JSON.stringify({ name, price })
+            });
+
+            if (response.ok) {
+                modal.style.display = "none";
+                document.getElementById("newProdName").value = "";
+                document.getElementById("newProdPrice").value = "";
+                fetchRealProducts(); // Dynamic structural reload
+            } else {
+                alert("Upload process rejected by database.");
+            }
+        } catch (err) {
+            alert("Communication failed during save execution.");
+        }
     });
 }
 
-// Secure Login Authenticated Dispatch Route Gateway
-app.post('/api/auth/login', (req, res) => {
-    const { email, password } = req.body;
-    
-    // Validating basic credentials placeholder profile targets
-    if (email === "lagharitahir08@gmail.com" && password === "123456") {
-        const userToken = jwt.sign({ email: email, name: "Muhammad Tahir" }, JWT_SECRET, { expiresIn: '365d' });
-        return res.status(200).json({ success: true, token: userToken });
-    }
-    return res.status(400).json({ success: false, message: "Invalid email or credentials parameters context." });
-});
+// Delete Handler (Triggers operational dynamic server cancellation and fires structured node mail updates)
+async function deleteUploadedProduct(productId) {
+    if (!confirm("Confirm complete cancellation and removal of this product asset item?")) return;
 
-// GET ROUTE: Fetch real products arrays elements securely from database
-app.get('/api/products/uploaded', verifyUserToken, (req, res) => {
-    res.status(200).json(realProductsDatabase);
-});
+    try {
+        const response = await fetch(`/api/products/delete/${productId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem("mt_auth_token")}` }
+        });
+        const result = await response.json();
 
-// POST ROUTE: Write new database products records inside server structures
-app.post('/api/products/upload', verifyUserToken, (req, res) => {
-    const { name, price } = req.body;
-    if (!name || !price) return res.status(400).json({ message: "Invalid input variables." });
-
-    const generatedProductItem = {
-        id: "prod_" + Date.now(),
-        name: `${name} (Qty: 1)`,
-        price: parseInt(price),
-        storeRef: "Vendor Uploaded"
-    };
-
-    realProductsDatabase.unshift(generatedProductItem); // Add onto database stack array elements
-    res.status(200).json({ success: true, item: generatedProductItem });
-});
-
-// DELETE ROUTE: Drop product matching unique identifiers parameters out and trigger email notifications
-app.delete('/api/products/delete/:id', verifyUserToken, (req, res) => {
-    const elementId = req.params.id;
-    const itemReference = realProductsDatabase.find(p => p.id === elementId);
-
-    if (!itemReference) {
-        return res.status(404).json({ success: false, message: "Asset object item not located inside database cache." });
-    }
-
-    // Filter database cache storage array structures dropping the current item elements securely
-    realProductsDatabase = realProductsDatabase.filter(p => p.id !== elementId);
-
-    // Form structured email transmission properties layout setup
-    const optionsPayload = {
-        from: process.env.EMAIL_USER || 'lagharitahir08@gmail.com',
-        to: req.userData.email,
-        subject: `Cancellation Engine Notification - Item dropped: ${itemReference.name}`,
-        text: `Hello Muhammad Tahir,\n\nThis system transmission serves to verify that the following data listing asset has been dropped and completely cancelled:\n\nProduct Title: ${itemReference.name}\nPrice Index: PKR ${itemReference.price}\n\nOperation completed from database records engine safely.\n\nBest Regards,\nMT Store System Control Core.`
-    };
-
-    emailTransporter.sendMail(optionsPayload, (err, completionInfo) => {
-        if (err) {
-            console.error("Nodemailer routing failure report log details: ", err);
-            // Return success anyway since item is already modified in database list
-            return res.status(200).json({ success: true, message: "Item dropped, but mail notifications dropped out.", error: err.message });
+        if (response.ok && result.success) {
+            alert("Product asset dropped and tracking validation alert notification email sent safely.");
+            fetchRealProducts();
+        } else {
+            alert("Failed to delete product element asset: " + result.message);
         }
-        console.log("Mail transaction executed successfully: " + completionInfo.response);
-        return res.status(200).json({ success: true, message: "Product record removed and cancellation dispatch notification email fired successfully." });
-    });
-});
+    } catch (err) {
+        alert("Server cancellation sync validation failed.");
+    }
+}
 
-// Catch-All routing interface to handle HTML page responses context loops
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+// Controller routing handlers managing layout visibility
+function switchTab(targetTab) {
+    const supportBlock = document.getElementById("centralSupportSection");
+    const sellerBlock = document.getElementById("sellerViewContainer");
 
-// App initialization engine activation gateway lines opening validation listeners
-app.listen(PORT, () => {
-    console.log(`MT Store processing pipeline listening on network active port http://localhost:${PORT}`);
-});
+    document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
+    document.getElementById(`${targetTab}Tab`).classList.add("active");
+
+    if (targetTab === 'message') {
+        if(sellerBlock) sellerBlock.style.display = "none";
+        if(supportBlock) supportBlock.style.display = "block";
+    } else if (targetTab === 'account') {
+        if(supportBlock) supportBlock.style.display = "none";
+        if(sellerBlock) sellerBlock.style.display = "block";
+        fetchRealProducts();
+    } else {
+        if(supportBlock) supportBlock.style.display = "none";
+        if(sellerBlock) sellerBlock.style.display = "none";
+    }
+}
+
+// Media file browser access integration mapping through pin icon interactions
+function setupAttachmentLogic() {
+    const triggerBtn = document.getElementById("pinAttachmentBtn");
+    const fileSelector = document.getElementById("hiddenFileInput");
+
+    if (triggerBtn && fileSelector) {
+        triggerBtn.addEventListener("click", () => fileSelector.click());
+        fileSelector.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                alert(`${e.target.files.length} media elements attached to comment buffer successfully.`);
+            }
+        });
+    }
+}
