@@ -1,15 +1,11 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
-const path = require('path');
 const jwt = require('jsonwebtoken');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || "mt_secure_core_token_hash_engine_2026";
 
 app.use(express.json());
-
-// Serving static assets manually inside serverless execution if needed
-app.use(express.static(path.join(__dirname, '/')));
 
 // Secure Email SMTP Channel Configuration
 const emailTransporter = nodemailer.createTransport({
@@ -100,11 +96,6 @@ app.delete('/api/products/delete/:id', verifyUserToken, (req, res) => {
         console.log("Mail transaction executed successfully: " + completionInfo.response);
         return res.status(200).json({ success: true, message: "Product record removed and cancellation dispatch notification email fired successfully to Admin and Seller." });
     });
-});
-
-// Fallback HTML router entry point compatible with Vercel paths
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Vercel serverless export setup
