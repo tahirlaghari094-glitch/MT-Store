@@ -1,110 +1,115 @@
-const express = require('express');
-const nodemailer = require('nodemailer');
-const jwt = require('jsonwebtoken');
-const path = require('path');
-
-const app = express();
-const JWT_SECRET = process.env.JWT_SECRET || "mt_secure_core_token_hash_engine_2026";
-
-app.use(express.json());
-
-// 1. Explicitly serve static files from the root directory
-app.use(express.static(__dirname));
-
-// Secure Email SMTP Channel Configuration
-const emailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER || 'lagharitahir08@gmail.com',
-        pass: process.env.EMAIL_PASS || 'your-app-password-here'
-    }
-});
-
-// Runtime Array simulating real database
-let realProductsDatabase = [
-    { id: "p1", name: "GMT Watch (Qty: 1)", price: 500, storeRef: "Admin Managed" },
-    { id: "p2", name: "Tissot Chronograph Special", price: 2500, storeRef: "Admin Managed" }
+// Local product memory collection rendered in "YOUR UPLOADED PRODUCTS"
+let uploadedProducts = [
+    { id: 1, name: "GMT Watch (Qty: 1)", price: 100000, ref: "Admin Managed" },
+    { id: 2, name: "GMT Watch (Qty: 1)", price: 100, ref: "Admin Managed" },
+    { id: 3, name: "GMT Watch (Qty: 1)", price: 100, ref: "Admin Managed" },
+    { id: 4, name: "Tissot Watch (Qty: 1)", price: 2500, ref: "Admin Managed" }
 ];
 
-// Authorization Middleware
-function verifyUserToken(req, res, next) {
-    const bearerHeader = req.headers['authorization'];
-    if (!bearerHeader) return res.status(401).json({ message: "Access keys unauthorized." });
+document.addEventListener("DOMContentLoaded", () => {
+    renderUploadedProducts();
+    setupAttachmentLogic();
 
-    const token = bearerHeader.split(' ')[1];
-    jwt.verify(token, JWT_SECRET, (err, decodedData) => {
-        if (err) return res.status(403).json({ message: "Invalid session authority parameters." });
-        req.userData = decodedData;
-        next();
+    // Default startup configurations setup
+    document.getElementById("addNewItemBtn").addEventListener("click", () => {
+        alert("Redirecting to Add New Product item interface panel.");
+    });
+});
+
+// Function to render items inside uploaded products context panel
+function renderUploadedProducts() {
+    const listContainer = document.getElementById("dynamicListContainer");
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = "";
+
+    uploadedProducts.forEach(product => {
+        const itemElement = document.createElement("div");
+        itemElement.className = "order-item";
+        itemElement.innerHTML = `
+            <div>
+                <strong style="display:block; font-size:15px; color:#ffffff;">${product.name}</strong>
+                <span style="color:#9ca3af; font-size:13px;">PKR ${product.price}</span><br>
+                <span style="color:#6b7280; font-size:11px;">Store Ref: ${product.ref}</span>
+            </div>
+            <button class="cancel-btn" onclick="processProductCancellation(${product.id}, '${product.name}')">Cancel</button>
+        `;
+        listContainer.appendChild(itemElement);
     });
 }
 
-// Secure Login Route
-app.post('/api/auth/login', (req, res) => {
-    const { email, password } = req.body;
+// Router switcher logic to hide/show Central Support only in Message tab
+function switchTab(selectedTab) {
+    const supportBlock = document.getElementById("centralSupportSection");
+    const sellerBlock = document.getElementById("sellerViewContainer");
     
-    if (email === "lagharitahir08@gmail.com" && password === "123456") {
-        const userToken = jwt.sign({ email: email, name: "Muhammad Tahir" }, JWT_SECRET, { expiresIn: '365d' });
-        return res.status(200).json({ success: true, token: userToken });
+    // Clear active status styling states from tabs UI
+    document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
+    
+    if (selectedTab === 'message') {
+        // Hide standard profile views and display message tracking structure exclusively
+        if (sellerBlock) sellerBlock.style.display = "none";
+        if (supportBlock) supportBlock.style.display = "block";
+        document.getElementById("messageTab").classList.add("active");
+    } else if (selectedTab === 'account') {
+        if (supportBlock) supportBlock.style.display = "none";
+        if (sellerBlock) sellerBlock.style.display = "block";
+        document.getElementById("accountTab").classList.add("active");
+        renderUploadedProducts();
+    } else {
+        // Fallback structures for standard placeholders
+        if (supportBlock) supportBlock.style.display = "none";
+        if (sellerBlock) sellerBlock.style.display = "none";
+        document.getElementById(`${selectedTab}Tab`).classList.add("active");
     }
-    return res.status(400).json({ success: false, message: "Invalid email or credentials parameters context." });
-});
+}
 
-// GET ROUTE: Fetch real products
-app.get('/api/products/uploaded', verifyUserToken, (req, res) => {
-    res.status(200).json(realProductsDatabase);
-});
+// Pin input trigger configuration for opening system documents/gallery
+function setupAttachmentLogic() {
+    const triggerBtn = document.getElementById("pinAttachmentBtn");
+    const fileSelector = document.getElementById("hiddenFileInput");
 
-// POST ROUTE: Upload new product
-app.post('/api/products/upload', verifyUserToken, (req, res) => {
-    const { name, price } = req.body;
-    if (!name || !price) return res.status(400).json({ message: "Invalid input variables." });
+    if (triggerBtn && fileSelector) {
+        triggerBtn.addEventListener("click", () => {
+            fileSelector.click(); // Standard system device media input access trigger
+        });
 
-    const generatedProductItem = {
-        id: "prod_" + Date.now(),
-        name: `${name} (Qty: 1)`,
-        price: parseInt(price),
-        storeRef: "Vendor Uploaded"
-    };
-
-    realProductsDatabase.unshift(generatedProductItem);
-    res.status(200).json({ success: true, item: generatedProductItem });
-});
-
-// DELETE ROUTE: Product delete aur dono ko email notification (Admin + Seller)
-app.delete('/api/products/delete/:id', verifyUserToken, (req, res) => {
-    const elementId = req.params.id;
-    const itemReference = realProductsDatabase.find(p => p.id === elementId);
-
-    if (!itemReference) {
-        return res.status(404).json({ success: false, message: "Asset object item not located inside database cache." });
+        fileSelector.addEventListener("change", (event) => {
+            const filesList = event.target.files;
+            if (filesList.length > 0) {
+                alert(`${filesList.length} media media items loaded into comment buffer attachment channel successfully.`);
+            }
+        });
     }
+}
 
-    realProductsDatabase = realProductsDatabase.filter(p => p.id !== elementId);
+// Action caller sending cancellation post records out onto the backend mail network
+async function processProductCancellation(productId, productName) {
+    if (!confirm(`Confirm product cancellation request for: ${productName}?`)) return;
 
-    const adminEmail = process.env.EMAIL_USER || 'lagharitahir08@gmail.com'; 
-    const sellerEmail = req.userData.email; 
+    try {
+        const networkResponse = await fetch('/api/cancel-order-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: productId,
+                title: productName,
+                recipient: 'lagharitahir08@gmail.com'
+            })
+        });
 
-    const optionsPayload = {
-        from: adminEmail,
-        to: `${adminEmail}, ${sellerEmail}`,
-        subject: `Cancellation Engine Notification - Item dropped: ${itemReference.name}`,
-        text: `Hello,\n\nThis system transmission serves to verify that the following data listing asset has been dropped and completely cancelled:\n\nProduct Title: ${itemReference.name}\nPrice Index: PKR ${itemReference.price}\n\nOperation completed from database records engine safely.\n\nBest Regards,\nMT Store System Control Core.`
-    };
-
-    emailTransporter.sendMail(optionsPayload, (err, completionInfo) => {
-        if (err) {
-            console.error("Nodemailer routing failure report log details: ", err);
-            return res.status(200).json({ success: true, message: "Item dropped, but mail notifications dropped out.", error: err.message });
+        const outcomeData = await networkResponse.json();
+        
+        if (networkResponse.ok && outcomeData.status === 'success') {
+            alert("Cancellation processed. Notification update dispatched to lagharitahir08@gmail.com");
+            // Perform application model client level array update sequence
+            uploadedProducts = uploadedProducts.filter(p => p.id !== productId);
+            renderUploadedProducts();
+        } else {
+            alert("Server operational mail system alert: " + outcomeData.error);
         }
-        console.log("Mail transaction executed successfully: " + completionInfo.response);
-        return res.status(200).json({ success: true, message: "Product record removed and cancellation dispatch notification email fired successfully to Admin and Seller." });
-    });
-});
-
-// 2. Fallback route: Serve index.html for any other frontend URL
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-module.exports = app;
+    } catch (err) {
+        console.error("Direct connection validation alert: ", err);
+        alert("API link runtime connectivity validation failed.");
+    }
+}
