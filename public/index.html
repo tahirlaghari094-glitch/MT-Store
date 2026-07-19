@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MT Store - Premium Multi-Vendor Hub</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            background-color: #0b0f19;
-            color: #f3f4f6;
-            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #0b1329;
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
         .tab-view {
             display: none;
@@ -20,7 +20,7 @@
         .tab-view.active {
             display: block;
         }
-        /* Custom scrollbar for glassmorphic containers */
+        /* Custom scrollbar for dark theme */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -29,259 +29,240 @@
         }
         ::-webkit-scrollbar-thumb {
             background: #334155;
-            border-radius: 999px;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f97316;
         }
     </style>
 </head>
-<body class="pb-24">
+<body class="bg-[#0b1329] text-white min-h-screen flex flex-col justify-between select-none">
 
-    <!-- TOP HEADER NAVIGATION BAR -->
-    <header class="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-        <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('home')">
-            <h1 class="text-xl font-black tracking-tighter text-orange-500 uppercase">MT STORE</h1>
-            <span id="user-status-badge" class="hidden text-[9px] bg-orange-500/10 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">common profile</span>
+    <!-- TOAST NOTIFICATION POPUP -->
+    <div id="toast-notification" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 px-5 py-3.5 rounded-2xl shadow-xl transition duration-300 transform -translate-y-4 opacity-0 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-xl"></i>
+        <span id="toast-message" class="text-xs font-bold tracking-wide">Action completed successfully!</span>
+    </div>
+
+    <!-- HEADER TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 bg-[#0b1329]/80 backdrop-blur-md border-b border-gray-900 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="switchTab('home')">
+            <span class="text-orange-500 font-black text-xl tracking-tighter">MT STORE</span>
+            <span id="user-status-badge" class="hidden text-[8px] bg-orange-500/10 border border-orange-500/30 text-orange-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">common profile</span>
         </div>
         
-        <!-- Action Menu Control Toggle -->
         <div class="relative">
-            <button onclick="toggleDropdown()" class="w-10 h-10 rounded-full bg-slate-800 border border-gray-700 flex items-center justify-center hover:bg-slate-700 transition">
-                <i class="fa-solid fa-ellipsis-vertical text-gray-300"></i>
+            <button onclick="toggleDropdown()" class="w-9 h-9 bg-slate-900 border border-gray-800 rounded-full flex items-center justify-center hover:border-gray-700 transition">
+                <i class="fa-solid fa-ellipsis-vertical text-gray-400 text-sm"></i>
             </button>
-            
-            <!-- 3-Dots Dropdown Options Panel -->
-            <div id="accountDropdown" class="hidden absolute right-0 mt-3 w-56 bg-slate-900 border border-gray-800 rounded-2xl shadow-2xl p-2 z-50 space-y-1">
-                <button onclick="setAccountType('common')" class="w-full text-left text-xs font-bold px-4 py-3 rounded-xl hover:bg-slate-800 text-gray-300 transition flex items-center gap-2">
-                    <i class="fa-solid fa-user text-orange-400"></i> Buyer Dashboard
+            <!-- DROPDOWN OPTIONS MENU -->
+            <div id="accountDropdown" class="hidden absolute right-0 mt-2 w-48 bg-slate-900 border border-gray-850 rounded-2xl shadow-2xl overflow-hidden z-50">
+                <button onclick="setAccountType('common')" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-slate-800 flex items-center gap-2 transition text-gray-300">
+                    <i class="fa-solid fa-bag-shopping text-orange-500"></i> Buyer Dashboard
                 </button>
-                <button onclick="setAccountType('seller')" class="w-full text-left text-xs font-bold px-4 py-3 rounded-xl hover:bg-slate-800 text-gray-300 transition flex items-center gap-2">
-                    <i class="fa-solid fa-store text-emerald-400"></i> Merchant Dashboard
+                <button onclick="setAccountType('seller')" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-slate-800 flex items-center gap-2 transition text-gray-300">
+                    <i class="fa-solid fa-store-slash text-orange-500"></i> Merchant Dashboard
+                </button>
+                <hr class="border-gray-850">
+                <button onclick="logout()" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-rose-950/40 text-rose-400 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Clear/Logout Profile
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- GLASS-MORPHIC TOAST NOTIFICATION ENGINE -->
-    <div id="toast-notification" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 -translate-y-4 transition duration-300 bg-slate-900/90 border border-emerald-500/30 backdrop-blur-xl px-5 py-3 rounded-2xl flex items-center gap-3 shadow-2xl text-emerald-400 font-bold text-xs min-w-[280px]">
-        <i id="toast-icon" class="fa-solid fa-circle-check text-xl"></i>
-        <span id="toast-message">Action processed successfully!</span>
-    </div>
+    <!-- MAIN BODY CONTROLLER LAYOUT CONTAINER -->
+    <main class="flex-grow max-w-md w-full mx-auto px-4 pt-4 pb-28 overflow-y-auto">
 
-    <main class="max-w-6xl mx-auto mt-6 px-4">
-        
-        <!-- VIEW 1: HOME PRODUCTS MARKETPLACE GRID -->
-        <div id="home-view" class="tab-view active space-y-6">
-            <div class="bg-gradient-to-r from-orange-600/10 to-transparent p-6 rounded-3xl border border-gray-850">
-                <h2 class="text-2xl font-black tracking-tight mb-1">Most Trending Items 🔥</h2>
-                <p class="text-xs text-gray-400">Original verified products directly dispatched via absolute Cash on Delivery protocols.</p>
+        <!-- 1. HOME PRODUCT GRID VIEW -->
+        <div id="home-view" class="tab-view active space-y-4">
+            <div class="bg-gradient-to-br from-orange-600 to-amber-600 rounded-3xl p-5 shadow-lg relative overflow-hidden">
+                <h2 class="text-xl font-black leading-tight max-w-[70%]">Secure Cash on Delivery Marketplace</h2>
+                <p class="text-[10px] text-white/80 mt-1 font-semibold">Premium products verified manually by central management.</p>
+                <i class="fa-solid fa-shield-halved absolute right-4 bottom-4 text-7xl opacity-15"></i>
             </div>
-            <div id="product-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <!-- Products automatically injected by loadProducts() inside main.js -->
+            
+            <h2 class="text-sm font-black text-gray-400 uppercase tracking-widest pt-2">Available Products</h2>
+            <div id="product-grid" class="grid grid-cols-2 gap-3 pb-6">
+                <!-- JavaScript automatically injects store listings here -->
             </div>
         </div>
 
-        <!-- VIEW 2: PRODUCT DETAIL PAGE -->
-        <div id="detail-view" class="tab-view max-w-2xl mx-auto space-y-4">
-            <button onclick="switchTab('home')" class="text-xs text-gray-400 hover:text-orange-500 transition flex items-center gap-2 font-bold mb-2">
+        <!-- 2. PRODUCT DETAILED INFO VIEW & REVIEWS CONTAINER -->
+        <div id="detail-view" class="tab-view space-y-5">
+            <button onclick="switchTab('home')" class="text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1 transition py-1">
                 <i class="fa-solid fa-arrow-left"></i> Back to Marketplace
             </button>
-            <div id="product-detail-content" class="bg-slate-900/60 border border-gray-850 rounded-3xl p-5 space-y-6">
-                <!-- Product content aur updated Customer Reviews Section yahan main.js ke through dynamically inject honge -->
+            <div id="product-detail-content" class="space-y-5">
+                <!-- main.js poora UI layout aur dynamic Review system isi ke andar render karega -->
             </div>
         </div>
 
-        <!-- VIEW 3: MERCHANT MANAGEMENT DASHBOARD -->
-        <div id="seller-view" class="tab-view max-w-xl mx-auto space-y-6">
-            <div class="bg-slate-900/60 border border-gray-850 p-6 rounded-3xl space-y-4">
-                <h2 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                    <i class="fa-solid fa-cloud-arrow-up text-orange-500"></i> Launch Merchant Item
-                </h2>
-                <form id="product-upload-form" class="space-y-4 text-xs">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="space-y-1">
-                            <label class="text-gray-400">Product Title *</label>
-                            <input type="text" id="p-title" required placeholder="e.g., GMT Luxury Watch" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2.5 text-white outline-none focus:border-orange-500">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-gray-400">Price (PKR) *</label>
-                            <input type="number" id="p-price" required placeholder="e.g., 2000" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2.5 text-white outline-none focus:border-orange-500">
-                        </div>
+        <!-- 3. MERCHANT LISTINGS & UPLOAD HUB -->
+        <div id="seller-view" class="tab-view space-y-4">
+            <div class="bg-slate-950 border border-gray-900 rounded-3xl p-5">
+                <h3 class="text-base font-black text-orange-500 mb-1">Verify New Merchant Listing</h3>
+                <p class="text-[10px] text-gray-400 mb-4 leading-relaxed">Fill all accurate tracking metrics. Admin manually reviews the TxID within 1 hour.</p>
+                
+                <form id="product-upload-form" class="space-y-3 text-xs">
+                    <input type="text" id="p-title" placeholder="Product Display Title *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="number" id="p-price" placeholder="Retail Selling Price (PKR) *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <textarea id="p-desc" placeholder="Product specifications, features & variants..." rows="3" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition resize-none"></textarea>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="bg-slate-900 border border-dashed border-gray-850 rounded-xl p-3 text-center cursor-pointer hover:border-orange-500 block transition">
+                            <span id="img-preview-label" class="text-[10px] text-gray-400 block font-semibold">Select 3+ Images *</span>
+                            <input type="file" id="p-image-file" multiple accept="image/*" required onchange="previewMedia(this, 'img-preview-label')" class="hidden">
+                        </label>
+                        <label class="bg-slate-900 border border-dashed border-gray-850 rounded-xl p-3 text-center cursor-pointer hover:border-orange-500 block transition">
+                            <span id="vid-preview-label" class="text-[10px] text-gray-400 block font-semibold">Select Video (Optional)</span>
+                            <input type="file" id="p-video-file" accept="video/*" onchange="previewMedia(this, 'vid-preview-label')" class="hidden">
+                        </label>
                     </div>
 
-                    <div class="space-y-1">
-                        <label class="text-gray-400">Product Description</label>
-                        <textarea id="p-desc" rows="2" placeholder="Describe quality markers and specs..." class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2.5 text-white outline-none focus:border-orange-500"></textarea>
+                    <div class="border-t border-gray-900 pt-3 mt-2 space-y-2">
+                        <span class="text-[10px] text-orange-400 font-bold block uppercase tracking-wider">Verification Fee Parameters (PKR 50)</span>
+                        <input type="text" id="p-txid" placeholder="JazzCash / EasyPaisa Transaction ID *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                        <input type="text" id="p-payment-details" placeholder="Sender Account Number / Title Name *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                     </div>
 
-                    <!-- Custom Gallery File Choosers (Minimum 3 Images) -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-gray-400 block mb-1">Product Photos (Min 3 Images Required) *</label>
-                            <label id="img-preview-label" for="p-image-file" class="w-full bg-slate-950 border border-dashed border-gray-800 hover:border-orange-500/50 rounded-xl p-3 text-center block cursor-pointer font-bold text-gray-500 transition truncate">
-                                Select 3 or More Images *
-                            </label>
-                            <input type="file" id="p-image-file" accept="image/*" multiple required class="hidden" onchange="previewMedia(this, 'img-preview-label')">
-                        </div>
-                        <div>
-                            <label class="text-gray-400 block mb-1">Product Video (Optional)</label>
-                            <label id="vid-preview-label" for="p-video-file" class="w-full bg-slate-950 border border-dashed border-gray-800 hover:border-orange-500/50 rounded-xl p-3 text-center block cursor-pointer font-bold text-gray-500 transition truncate">
-                                Select Video (Optional)
-                            </label>
-                            <input type="file" id="p-video-file" accept="video/*" class="hidden" onchange="previewMedia(this, 'vid-preview-label')">
-                        </div>
+                    <div class="border-t border-gray-900 pt-3 space-y-2">
+                        <span class="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Merchant Hub Contact Info</span>
+                        <input type="text" id="p-address" placeholder="Physical Pickup Store Address *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                        <input type="tel" id="p-contact" placeholder="Customer Support Contact Number *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                        <input type="email" id="p-email" placeholder="Registered Login Email *" required oninput="renderSellerListings()" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                     </div>
 
-                    <!-- Submission Fee Info Area -->
-                    <div class="bg-orange-500/5 border border-orange-500/10 p-3 rounded-xl space-y-2">
-                        <p class="text-[10px] text-orange-400/80 leading-normal"><i class="fa-solid fa-circle-info"></i> Send 50 PKR submission review listing fee to Admin account: <strong>03113841402</strong>. Enter verification parameters below:</p>
-                        <div class="grid grid-cols-2 gap-3">
-                            <input type="text" id="p-txid" required placeholder="Transaction TxID *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2 text-white outline-none focus:border-orange-500">
-                            <input type="text" id="p-payment-details" required placeholder="Sender Name/Wallet *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2 text-white outline-none focus:border-orange-500">
-                        </div>
-                    </div>
-
-                    <!-- Merchant Pipeline Info Fields -->
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="p-address" required placeholder="Hub Address *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2 text-white outline-none focus:border-orange-500">
-                        <input type="tel" id="p-contact" required placeholder="Seller Contact/WhatsApp *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2 text-white outline-none focus:border-orange-500">
-                        <input type="email" id="p-email" required placeholder="Merchant Email *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-3 py-2 text-white outline-none focus:border-orange-500" onkeyup="renderSellerListings()">
-                    </div>
-
-                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3 rounded-xl transition text-sm">
-                        🚀 Submit Item for Admin Verification
-                    </button>
+                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition mt-2 shadow-lg">Submit Verification Application</button>
                 </form>
             </div>
 
-            <!-- Seller's Listings Container -->
-            <div class="space-y-3">
-                <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider">📊 Your Submission Vault History</h3>
-                <div id="seller-listings-container" class="space-y-3">
-                    <!-- Loaded dynamically via email context entry -->
+            <div class="space-y-2">
+                <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider">Your Merchant Upload History</h4>
+                <div id="seller-listings-container" class="space-y-2">
+                    <!-- Javascript populates seller history items here -->
                 </div>
             </div>
         </div>
 
-        <!-- VIEW 4: CASH ON DELIVERY SHOPPING BASKET CHECKOUT -->
-        <div id="cart-view" class="tab-view max-w-xl mx-auto space-y-6">
-            <h2 class="text-xl font-black tracking-tight flex items-center gap-2"><i class="fa-solid fa-basket-shopping text-orange-500"></i> Shopping Basket</h2>
+        <!-- 4. CHECKOUT BASKET SHOPPING CART VIEW -->
+        <div id="cart-view" class="tab-view space-y-4">
+            <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest">Shopping Checkout Basket</h3>
             <div id="cart-items" class="space-y-3">
-                <!-- Items managed dynamically -->
+                <!-- Dynamic active shopping list -->
             </div>
             
-            <!-- Shipping Info Form Area -->
-            <div class="bg-slate-900/60 border border-gray-850 p-5 rounded-3xl space-y-4">
-                <h3 class="text-sm font-black text-gray-300 uppercase tracking-wide">📦 Cash on Delivery Dispatch Information</h3>
-                <div class="space-y-3 text-xs">
-                    <input type="text" id="buyer-name" placeholder="Full Name *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none">
-                    <input type="email" id="buyer-email" placeholder="Active Email Address *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none">
-                    <input type="tel" id="buyer-phone" placeholder="Mobile Number (For COD Delivery Verification) *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none">
-                    <textarea id="buyer-address" rows="2" placeholder="Complete Shipping Home Address *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"></textarea>
+            <div class="bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-3 mt-4">
+                <h4 class="text-xs font-black text-orange-500 uppercase tracking-wider flex items-center gap-1">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Cash on Delivery Shipping Form
+                </h4>
+                <div class="space-y-2.5 text-xs">
+                    <input type="text" id="buyer-name" placeholder="Full Name *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="email" id="buyer-email" placeholder="Email Address *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="tel" id="buyer-phone" placeholder="Mobile Contact Number *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="text" id="buyer-address" placeholder="Complete Drop-off Home Address *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                 </div>
-                <button onclick="checkout()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-truck-ramp-box"></i> Finalize Dispatch Order (COD)
-                </button>
+                <button onclick="checkout()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-4 rounded-xl text-xs transition uppercase tracking-wider shadow-lg">Confirm Order (COD Delivery)</button>
             </div>
         </div>
 
-        <!-- VIEW 5: USER SESSION PROFILE & LIVE ORDER TRACKING -->
-        <div id="account-view" class="tab-view max-w-md mx-auto">
-            <!-- LOGIN AUTH FORM CONTAINER -->
-            <div id="auth-box" class="bg-slate-900/60 border border-gray-850 p-6 rounded-3xl space-y-4">
+        <!-- 5. ACCOUNT INTERFACE PROFILE VIEW -->
+        <div id="account-view" class="tab-view space-y-4">
+            <!-- NOT LOGGED IN AUTH BOX -->
+            <div id="auth-box" class="bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-3 text-center">
+                <i class="fa-solid fa-circle-user text-4xl text-gray-600"></i>
                 <div>
-                    <h2 class="text-xl font-black text-white">Secure Portal Access</h2>
-                    <p class="text-xs text-gray-400 mt-1">Initialize centralized tracking dashboard metrics.</p>
+                    <h3 class="font-extrabold text-sm">Account Synchronization</h3>
+                    <p class="text-[10px] text-gray-400">Sync profile metrics across multiple deployment platforms.</p>
                 </div>
-                <div class="space-y-3 text-xs">
-                    <input type="email" id="auth-email" placeholder="Account Registered Email *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none">
-                    <input type="password" id="auth-password" placeholder="Password Access Token *" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none">
-                    <button onclick="handleAuth()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3.5 rounded-xl transition text-sm">
-                        Verify Authenticated Login
-                    </button>
+                <div class="space-y-2 text-xs text-left mt-2">
+                    <input type="email" id="auth-email" placeholder="Enter Account Email *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="password" id="auth-password" placeholder="Account Password *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                 </div>
+                <button onclick="handleAuth()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3 rounded-xl text-xs transition uppercase">Access / Create Profile</button>
             </div>
 
-            <!-- DYNAMIC USER BOX LIVE SECTION -->
-            <div id="profile-panel" class="hidden space-y-6">
-                <div class="flex items-center gap-4 bg-slate-950/40 p-5 rounded-2xl border border-gray-850">
-                    <div class="relative group cursor-pointer w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center overflow-hidden" onclick="triggerProfileImageUpload()">
-                        <span id="avatar-text" class="text-xl font-black text-orange-400">MT</span>
-                        <img id="avatar-image-display" src="" class="w-full h-full object-cover hidden">
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
-                            <i class="fa-solid fa-pencil"></i>
+            <!-- LOGGED IN USER SECURE PROFILE CONTROL PANEL -->
+            <div id="profile-panel" class="hidden bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="relative cursor-pointer group" onclick="triggerProfileImageUpload()">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-xl font-black text-slate-950 uppercase overflow-hidden shadow-md">
+                            <span id="avatar-text">MT</span>
+                            <img id="avatar-image-display" src="" class="hidden w-full h-full object-cover">
+                        </div>
+                        <div class="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                            <i class="fa-solid fa-camera text-white text-xs"></i>
                         </div>
                         <input type="file" id="hidden-profile-image-input" accept="image/*" class="hidden" onchange="uploadProfileImageFile(this)">
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h3 id="panel-username" class="font-black text-lg text-white">User Name</h3>
-                            <i class="fa-solid fa-pencil text-gray-500 hover:text-orange-400 cursor-pointer text-xs" onclick="editProfileUsername()"></i>
+                            <h3 id="panel-username" class="font-black text-base text-white">Guest User</h3>
+                            <button onclick="editProfileUsername()" class="text-gray-400 hover:text-orange-400 transition text-[10px]"><i class="fa-solid fa-pen"></i></button>
                         </div>
-                        <p id="panel-email" class="text-xs text-gray-400">user@example.com</p>
-                        <span id="panel-role" class="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-gray-400 px-2 py-0.5 rounded border border-gray-700">Common Account</span>
+                        <p id="panel-email" class="text-xs text-gray-400">syncing details...</p>
+                        <span id="panel-role" class="inline-block text-[8px] font-black uppercase tracking-widest bg-slate-900 border border-gray-800 text-orange-400 px-2 py-0.5 rounded-md mt-1">common account</span>
                     </div>
                 </div>
-                
-                <div class="space-y-3">
-                    <h4 class="text-xs font-black uppercase text-gray-400 tracking-wider">📦 Live Order Tracking Dispatch</h4>
-                    <div id="orders-summary-container" class="space-y-3">
-                        <!-- Loaded dynamically -->
+
+                <div class="border-t border-gray-900 pt-3 space-y-2">
+                    <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider">Your Placed Orders Summary</h4>
+                    <div id="orders-summary-container" class="space-y-2">
+                        <!-- Dynamic personal secure invoices list -->
                     </div>
                 </div>
-                
-                <button onclick="logout()" class="w-full bg-slate-950/40 hover:bg-rose-950/20 border border-gray-850 hover:border-rose-900/50 text-gray-400 hover:text-rose-400 text-xs py-3 rounded-xl font-bold transition">
-                    Logout Account Session
-                </button>
             </div>
         </div>
 
-        <!-- VIEW 6: LIVE CONCIERGE CENTRAL COMMAND MESSAGES -->
-        <div id="messages-view" class="tab-view max-w-xl mx-auto">
-            <div class="bg-slate-900/60 border border-gray-850 rounded-3xl overflow-hidden flex flex-col h-[500px]">
-                <div class="p-4 bg-slate-950/50 border-b border-gray-850 flex items-center gap-3">
-                    <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <h3 class="text-sm font-black tracking-wide uppercase">MT Store Help Support Desk</h3>
+        <!-- 6. MT HUB CHAT MESSAGES VIEW -->
+        <div id="messages-view" class="tab-view flex flex-col h-[75vh] bg-slate-950 border border-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+            <div class="bg-slate-900 border-b border-gray-850 p-4 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 font-bold text-xs">MT</div>
+                <div>
+                    <h3 class="font-extrabold text-xs">Central Command Support</h3>
+                    <p class="text-[9px] text-emerald-400 flex items-center gap-1 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Network Router Online</p>
                 </div>
-                <!-- Chat Box Container -->
-                <div id="chat-box" class="flex-grow p-4 overflow-y-auto space-y-4 flex flex-col text-xs">
-                    <div class="bg-slate-800 p-3 rounded-2xl max-w-[80%] text-gray-200">
-                        Hello! Welcome to MT Store. Drop your query or order tracking confirmation number below.
-                    </div>
+            </div>
+            
+            <!-- CHAT INTERACTION SCROLL BOX -->
+            <div id="chat-box" class="flex-grow p-4 overflow-y-auto flex flex-col gap-3 text-xs">
+                <div class="bg-slate-900 p-3 rounded-2xl max-w-[85%] text-gray-300 leading-relaxed">
+                    Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
                 </div>
-                <!-- Input Panel -->
-                <div class="p-3 bg-slate-950/50 border-t border-gray-850 flex gap-2">
-                    <input type="text" id="chat-input" placeholder="Type verified query description..." class="flex-grow bg-slate-900 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-orange-500 outline-none" onkeypress="if(event.key === 'Enter') sendMessage()">
-                    <button onclick="sendMessage()" class="bg-orange-500 hover:bg-orange-600 text-slate-950 font-black px-4 rounded-xl text-xs transition">
-                        Send
-                    </button>
-                </div>
+            </div>
+
+            <div class="p-3 border-t border-gray-850 bg-slate-900 flex gap-2">
+                <input type="text" id="chat-input" placeholder="Type support response query..." onkeypress="if(event.key==='Enter') sendMessage()" class="flex-grow bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-orange-500 transition">
+                <button onclick="sendMessage()" class="bg-orange-500 hover:bg-orange-600 text-slate-950 w-11 h-11 rounded-xl flex items-center justify-center shadow-md transition shrink-0">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
             </div>
         </div>
 
     </main>
 
-    <!-- CORE FLOATING BOTTOM NAVIGATION BAR PANEL -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-lg border-t border-gray-850 px-4 py-2">
-        <div class="max-w-lg mx-auto flex justify-between items-center text-gray-400">
-            <button onclick="switchTab('home')" class="flex flex-col items-center gap-1 p-2 text-xs font-bold hover:text-orange-500 transition">
-                <i class="fa-solid fa-house text-lg"></i>
-                <span>Home</span>
-            </button>
-            <button onclick="switchTab('messages')" class="flex flex-col items-center gap-1 p-2 text-xs font-bold hover:text-orange-500 transition">
-                <i class="fa-solid fa-comments text-lg"></i>
-                <span>Message</span>
-            </button>
-            <button onclick="switchTab('cart')" class="relative flex flex-col items-center gap-1 p-2 text-xs font-bold hover:text-orange-500 transition">
-                <i class="fa-solid fa-cart-shopping text-lg"></i>
-                <span>Cart</span>
-                <span id="cart-count" class="hidden absolute top-1 right-1 bg-orange-500 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
-            </button>
-            <button onclick="switchTab('account')" class="flex flex-col items-center gap-1 p-2 text-xs font-bold hover:text-orange-500 transition">
-                <i class="fa-solid fa-user text-lg"></i>
-                <span>Account</span>
-            </button>
-        </div>
+    <!-- FOOTER NAV DOCK MENU BAR -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#0b1329]/95 backdrop-blur-md border-t border-gray-900 py-2.5 max-w-md mx-auto px-6 flex justify-between items-center shadow-2xl">
+        <button onclick="switchTab('home')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition">
+            <i class="fa-solid fa-house text-base transition duration-200 group-hover:scale-110"></i>
+            <span class="text-[9px] font-bold tracking-wider">Home</span>
+        </button>
+        <button onclick="switchTab('messages')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition">
+            <i class="fa-solid fa-comments text-base transition duration-200 group-hover:scale-110"></i>
+            <span class="text-[9px] font-bold tracking-wider">Message</span>
+        </button>
+        <button onclick="switchTab('cart')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition relative">
+            <i class="fa-solid fa-cart-shopping text-base transition duration-200 group-hover:scale-110"></i>
+            <span id="cart-count" class="hidden absolute -top-1.5 -right-2 text-[8px] font-black bg-orange-500 text-slate-950 w-4 h-4 rounded-full flex items-center justify-center border border-[#0b1329] shadow-md animate-bounce">0</span>
+            <span class="text-[9px] font-bold tracking-wider">Cart</span>
+        </button>
+        <button onclick="switchTab('account')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition">
+            <i class="fa-solid fa-user-gear text-base transition duration-200 group-hover:scale-110"></i>
+            <span class="text-[9px] font-bold tracking-wider">Account</span>
+        </button>
     </nav>
 
+    <!-- LINK EXTERNALLY MOUNTED MAIN JAVASCRIPT LOGIC -->
     <script src="main.js"></script>
 </body>
 </html>
