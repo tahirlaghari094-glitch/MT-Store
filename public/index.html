@@ -20,7 +20,12 @@
         .tab-view.active {
             display: block;
         }
-        /* Custom scrollbar for dark theme */
+        .seller-sub-tab {
+            display: none;
+        }
+        .seller-sub-tab.active {
+            display: block;
+        }
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -61,7 +66,7 @@
                     <i class="fa-solid fa-bag-shopping text-orange-500"></i> Buyer Dashboard
                 </button>
                 <button onclick="setAccountType('seller')" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-slate-800 flex items-center gap-2 transition text-gray-300">
-                    <i class="fa-solid fa-store-slash text-orange-500"></i> Merchant Dashboard
+                    <i class="fa-solid fa-store text-orange-500"></i> Become a Seller
                 </button>
                 <hr class="border-gray-850">
                 <button onclick="logout()" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-rose-950/40 text-rose-400 flex items-center gap-2 transition">
@@ -84,7 +89,7 @@
             
             <h2 class="text-sm font-black text-gray-400 uppercase tracking-widest pt-2">Available Products</h2>
             <div id="product-grid" class="grid grid-cols-2 gap-3 pb-6">
-                <!-- JavaScript automatically injects store listings here -->
+                <!-- Injected dynamically -->
             </div>
         </div>
 
@@ -94,13 +99,23 @@
                 <i class="fa-solid fa-arrow-left"></i> Back to Marketplace
             </button>
             <div id="product-detail-content" class="space-y-5">
-                <!-- main.js poora UI layout aur dynamic Review system isi ke andar render karega -->
+                <!-- main.js dynamic injection -->
             </div>
         </div>
 
-        <!-- 3. MERCHANT LISTINGS & UPLOAD HUB -->
+        <!-- 3. SELLER CONTROL HUB (BECOME A SELLER) -->
         <div id="seller-view" class="tab-view space-y-4">
-            <div class="bg-slate-950 border border-gray-900 rounded-3xl p-5">
+            <div class="bg-slate-950 border border-gray-900 rounded-3xl p-4 flex gap-2">
+                <button onclick="switchSellerSubTab('upload')" id="btn-sub-upload" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950">
+                    <i class="fa-solid fa-plus-circle mr-1"></i> Add a New Item
+                </button>
+                <button onclick="switchSellerSubTab('history')" id="btn-sub-history" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-slate-900 border border-gray-800 text-gray-300 hover:text-white">
+                    <i class="fa-solid fa-boxes-stacked mr-1"></i> Your Uploaded Items
+                </button>
+            </div>
+
+            <!-- SUB TAB: UPLOAD FORM -->
+            <div id="seller-upload-tab" class="seller-sub-tab active bg-slate-950 border border-gray-900 rounded-3xl p-5">
                 <h3 class="text-base font-black text-orange-500 mb-1">Verify New Merchant Listing</h3>
                 <p class="text-[10px] text-gray-400 mb-4 leading-relaxed">Fill all accurate tracking metrics. Admin manually reviews the TxID within 1 hour.</p>
                 
@@ -130,17 +145,18 @@
                         <span class="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Merchant Hub Contact Info</span>
                         <input type="text" id="p-address" placeholder="Physical Pickup Store Address *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                         <input type="tel" id="p-contact" placeholder="Customer Support Contact Number *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
-                        <input type="email" id="p-email" placeholder="Registered Login Email *" required oninput="renderSellerListings()" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                        <input type="email" id="p-email" placeholder="Registered Login Email *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
                     </div>
 
                     <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition mt-2 shadow-lg">Submit Verification Application</button>
                 </form>
             </div>
 
-            <div class="space-y-2">
-                <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider">Your Merchant Upload History</h4>
+            <!-- SUB TAB: UPLOAD HISTORY -->
+            <div id="seller-history-tab" class="seller-sub-tab space-y-2">
+                <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider px-1">Your Live Store Inventory</h4>
                 <div id="seller-listings-container" class="space-y-2">
-                    <!-- Javascript populates seller history items here -->
+                    <!-- Javascript populates history items here -->
                 </div>
             </div>
         </div>
@@ -149,7 +165,7 @@
         <div id="cart-view" class="tab-view space-y-4">
             <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest">Shopping Checkout Basket</h3>
             <div id="cart-items" class="space-y-3">
-                <!-- Dynamic active shopping list -->
+                <!-- Dynamic cart list -->
             </div>
             
             <div class="bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-3 mt-4">
@@ -168,12 +184,12 @@
 
         <!-- 5. ACCOUNT INTERFACE PROFILE VIEW -->
         <div id="account-view" class="tab-view space-y-4">
-            <!-- NOT LOGGED IN AUTH BOX -->
+            <!-- AUTH BOX -->
             <div id="auth-box" class="bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-3 text-center">
                 <i class="fa-solid fa-circle-user text-4xl text-gray-600"></i>
                 <div>
                     <h3 class="font-extrabold text-sm">Account Synchronization</h3>
-                    <p class="text-[10px] text-gray-400">Sync profile metrics across multiple deployment platforms.</p>
+                    <p class="text-[10px] text-gray-400">Sync profile metrics across multiple platforms.</p>
                 </div>
                 <div class="space-y-2 text-xs text-left mt-2">
                     <input type="email" id="auth-email" placeholder="Enter Account Email *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
@@ -182,7 +198,7 @@
                 <button onclick="handleAuth()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3 rounded-xl text-xs transition uppercase">Access / Create Profile</button>
             </div>
 
-            <!-- LOGGED IN USER SECURE PROFILE CONTROL PANEL -->
+            <!-- PROFILE PANEL (INCLUDES PLACED ORDERS WITH NEW CANCEL BUTTON) -->
             <div id="profile-panel" class="hidden bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-4">
                 <div class="flex items-center gap-4">
                     <div class="relative cursor-pointer group" onclick="triggerProfileImageUpload()">
@@ -208,7 +224,7 @@
                 <div class="border-t border-gray-900 pt-3 space-y-2">
                     <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider">Your Placed Orders Summary</h4>
                     <div id="orders-summary-container" class="space-y-2">
-                        <!-- Dynamic personal secure invoices list -->
+                        <!-- Dynamic personal orders container -->
                     </div>
                 </div>
             </div>
@@ -224,7 +240,6 @@
                 </div>
             </div>
             
-            <!-- CHAT INTERACTION SCROLL BOX -->
             <div id="chat-box" class="flex-grow p-4 overflow-y-auto flex flex-col gap-3 text-xs">
                 <div class="bg-slate-900 p-3 rounded-2xl max-w-[85%] text-gray-300 leading-relaxed">
                     Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
@@ -262,7 +277,6 @@
         </button>
     </nav>
 
-    <!-- LINK EXTERNALLY MOUNTED MAIN JAVASCRIPT LOGIC -->
     <script src="main.js"></script>
 </body>
 </html>
