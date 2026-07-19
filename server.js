@@ -112,6 +112,16 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
+// 🆕 Review Schema (Added for Merchant/Product Reviews)
+const ReviewSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    productId: { type: String, required: true },
+    comment: String,
+    media: [String], // Array to store multiple Base64 items (images/videos)
+    createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const Review = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
+
 // Static Paths Setup
 const rootPath = process.cwd();
 const publicPath = path.join(rootPath, 'public');
@@ -156,6 +166,45 @@ app.post('/api/users/update', async (req, res) => {
         res.json({ success: true, user });
     } catch (e) {
         res.status(500).json({ error: "Failed to update profile settings" });
+    }
+});
+
+// ==========================================
+// 💬 MERCHANT / PRODUCT REVIEWS APIS (🆕 ADDED)
+// ==========================================
+
+// 1. Get Reviews for a specific product
+app.get('/api/reviews/:productId', async (req, res) => {
+    try {
+        const productReviews = await Review.find({ productId: req.params.productId }).sort({ createdAt: -1 });
+        res.json({ success: true, reviews: productReviews });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch product reviews" });
+    }
+});
+
+// 2. Post a review with Base64 media arrays (Direct from Gallery)
+app.post('/api/reviews', async (req, res) => {
+    const { productId, comment, media } = req.body; // media must be an array of Base64 strings
+    if (!productId) return res.status(400).json({ error: "Product identification is missing." });
+    if (!comment && (!media || media.length === 0)) {
+        return res.status(400).json({ error: "Review cannot be posted completely empty." });
+    }
+
+    try {
+        const reviewId = 'REV-' + Date.now();
+        const newReview = new Review({
+            id: reviewId,
+            productId,
+            comment: comment || "",
+            media: media || [] // Safely handles incoming array of files
+        });
+
+        await newReview.save();
+        res.status(201).json({ success: true, message: "Review posted successfully!", review: newReview });
+    } catch (error) {
+        console.error("❌ Review submission system failure: ", error);
+        res.status(500).json({ error: "Database error saving comments pipeline." });
     }
 });
 
