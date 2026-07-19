@@ -255,7 +255,7 @@ function viewDetails(productId) {
     switchTab('detail');
 }
 
-// Instant Buy Now
+// Instant Buy Now (FIXED FLOW AND UI SYNC)
 function instantBuyNow(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if(!p) return;
@@ -264,10 +264,22 @@ function instantBuyNow(productId) {
     const selectedQty = qtyInput ? parseInt(qtyInput.value) : 1;
     
     cart = [{ ...p, quantity: selectedQty }];
-    document.getElementById('cart-count').textContent = selectedQty;
-    document.getElementById('cart-count').classList.remove('hidden');
     
+    const countBadge = document.getElementById('cart-count');
+    if (countBadge) {
+        countBadge.textContent = selectedQty;
+        countBadge.classList.remove('hidden');
+    }
+    
+    // Auto fill user details if available in checkout fields
+    if (currentUser) {
+        if(document.getElementById('buyer-name')) document.getElementById('buyer-name').value = currentUser.username || '';
+        if(document.getElementById('buyer-email')) document.getElementById('buyer-email').value = currentUser.email || '';
+    }
+    
+    // Force direct tab switch and UI re-render
     switchTab('cart');
+    renderCart();
     showNotification("Redirected to Instant Checkout Form!");
 }
 
@@ -568,8 +580,11 @@ function addToCart(productId) {
     }
 
     const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-    document.getElementById('cart-count').textContent = totalItems;
-    document.getElementById('cart-count').classList.remove('hidden');
+    const countBadge = document.getElementById('cart-count');
+    if (countBadge) {
+        countBadge.textContent = totalItems;
+        countBadge.classList.remove('hidden');
+    }
     showNotification(`Added ${p.title} (${selectedQty}x) to checkout cart!`);
 }
 
@@ -607,11 +622,12 @@ function renderCart() {
 
 function removeFromCart(id) {
     cart = cart.filter(item => item.id !== id);
+    const countBadge = document.getElementById('cart-count');
     if(cart.length === 0) {
-        document.getElementById('cart-count').classList.add('hidden');
+        if (countBadge) countBadge.classList.add('hidden');
     } else {
         const totalItems = cart.reduce((acc, current) => acc + current.quantity, 0);
-        document.getElementById('cart-count').textContent = totalItems;
+        if (countBadge) countBadge.textContent = totalItems;
     }
     renderCart();
 }
@@ -645,7 +661,8 @@ async function checkout() {
         if(res.ok) {
             showNotification("Success! Ordered via Cash on Delivery (COD).");
             cart = [];
-            document.getElementById('cart-count').classList.add('hidden');
+            const countBadge = document.getElementById('cart-count');
+            if (countBadge) countBadge.classList.add('hidden');
             renderCart();
             switchTab('home');
         } else {
