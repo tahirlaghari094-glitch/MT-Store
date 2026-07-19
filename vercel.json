@@ -8,15 +8,20 @@
   ],
   "routes": [
     {
+      "src": "/api/cancel-order-email",
+      "dest": "server.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "server.js"
     },
     {
-      "handle": "filesystem"
+      "src": "/main.js",
+      "dest": "/main.js"
     },
     {
       "src": "/(.*)",
-      "dest": "index.html"
+      "dest": "/index.html"
     }
   ]
 }
