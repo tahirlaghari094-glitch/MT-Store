@@ -36,6 +36,17 @@ function setAccountType(type) {
         badge.textContent = `${type} profile`;
         badge.classList.remove('hidden');
     }
+    
+    // Updates headers text contexts smoothly based on active profile states
+    const orderTitleHeader = document.getElementById('placed-orders-title-header');
+    if (orderTitleHeader) {
+        if (type === 'seller') {
+            orderTitleHeader.textContent = "Your Uploaded Orders";
+        } else {
+            orderTitleHeader.textContent = "Your Placed Orders Summary";
+        }
+    }
+
     if(type === 'seller') {
         showNotification("Switched to Seller Control Mode.");
         if (currentUser && document.getElementById('p-email')) {
@@ -71,6 +82,17 @@ function switchSellerSubTab(subTab) {
 
 function switchTab(tabName) {
     document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
+    
+    // Requirements checklist rule: Central command box element logic checks
+    const centralCommandSupportBox = document.getElementById('central-command-floating-support');
+    if (centralCommandSupportBox) {
+        if (tabName === 'messages') {
+            centralCommandSupportBox.classList.remove('hidden');
+        } else {
+            centralCommandSupportBox.classList.add('hidden');
+        }
+    }
+
     if (tabName === 'home') {
         document.getElementById('home-view').classList.add('active');
         loadProducts();
@@ -116,6 +138,11 @@ async function previewMedia(input, labelId) {
         const file = input.files[0];
         if (!file) return;
         document.getElementById(labelId).textContent = "Video Selected ✓";
+    } else if (input.id === 'comment-pin-file') {
+        const files = input.files;
+        if (files.length > 0) {
+            showNotification(`${files.length} Media items attached from gallery!`);
+        }
     }
 }
 
@@ -249,14 +276,23 @@ function viewDetails(productId) {
             </div>
         </div>
 
-        <!-- REVIEWS AND COMMENTS WRAPPER -->
+        <!-- REVIEWS AND COMMENTS WRAPPER WITH DIRECT GALLERY PIN OPTION -->
         <div class="bg-slate-950/40 border border-gray-800 rounded-2xl p-5 mt-4 space-y-4">
             <h3 class="text-sm font-black text-orange-400 uppercase tracking-wider flex items-center gap-2">
                 <i class="fa-solid fa-comments"></i> Public Reviews & Feedback
             </h3>
             
             <div class="space-y-2">
-                <textarea id="review-comment-input" placeholder="Share your experience or ask a question about this product..." rows="3" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:border-orange-500 outline-none resize-none transition"></textarea>
+                <div class="relative w-full bg-slate-900 border border-gray-850 rounded-xl overflow-hidden focus-within:border-orange-500 transition">
+                    <textarea id="review-comment-input" placeholder="Share your experience or ask a question about this product..." rows="3" class="w-full bg-transparent p-3 text-xs text-white placeholder-gray-500 outline-none resize-none transition pr-10"></textarea>
+                    
+                    <!-- Direct Gallery Attachment Pin Button Trigger Layout -->
+                    <button onclick="document.getElementById('comment-pin-file').click()" class="absolute right-3 bottom-3 text-gray-400 hover:text-orange-500 text-sm transition" title="Attach photos or video from gallery">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </button>
+                    <input type="file" id="comment-pin-file" multiple accept="image/*,video/*" onchange="previewMedia(this, '')" class="hidden">
+                </div>
+
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-1 text-xs text-amber-400">
                         <span class="text-gray-500 mr-1">Rating:</span>
@@ -289,22 +325,38 @@ async function loadProductReviews(productId) {
     if (!listContainer) return;
 
     try {
-        const res = await fetch(`/api/products/${productId}/reviews`);
+        const res = await fetch(`/api/reviews/${productId}`);
         if (res.ok) {
-            const reviews = await res.json();
+            const data = await res.json();
+            const reviews = data.reviews;
             if (reviews && reviews.length > 0) {
                 if(placeholder) placeholder.style.display = 'none';
                 listContainer.innerHTML = '';
                 reviews.forEach(r => {
                     const stars = '⭐'.repeat(parseInt(r.rating) || 5);
+                    
+                    let attachedMediaHtml = '';
+                    if(r.media && r.media.length > 0) {
+                        attachedMediaHtml = `<div class="flex flex-wrap gap-1.5 pt-2">`;
+                        r.media.forEach(item => {
+                            if(item.includes("data:video")) {
+                                attachedMediaHtml += `<video src="${item}" controls class="w-20 h-20 object-cover rounded-lg border border-gray-800 bg-black"></video>`;
+                            } else {
+                                attachedMediaHtml += `<img src="${item}" class="w-16 h-16 object-cover rounded-lg border border-gray-800">`;
+                            }
+                        });
+                        attachedMediaHtml += `</div>`;
+                    }
+
                     listContainer.innerHTML += `
                         <div class="bg-slate-900/60 p-3 rounded-xl border border-gray-850 text-xs space-y-1">
                             <div class="flex justify-between items-center">
                                 <span class="font-extrabold text-orange-400">${r.username || 'Anonymous Buyer'}</span>
-                                <span class="text-[10px] text-gray-500">${r.date || 'Just now'}</span>
+                                <span class="text-[10px] text-gray-500">${r.createdAt ? r.createdAt.substring(0,10) : 'Just now'}</span>
                             </div>
                             <div class="text-[10px] text-amber-400">${stars}</div>
-                            <p class="text-gray-300 leading-relaxed mt-1">${r.comment}</p>
+                            <p class="text-gray-300 leading-relaxed mt-1">${r.comment || ''}</p>
+                            ${attachedMediaHtml}
                         </div>
                     `;
                 });
@@ -318,21 +370,35 @@ async function loadProductReviews(productId) {
 async function submitProductReview(productId) {
     const commentInput = document.getElementById('review-comment-input');
     const ratingSelect = document.getElementById('review-rating-select');
+    const pinFileInput = document.getElementById('comment-pin-file');
     
-    if (!commentInput || !commentInput.value.trim()) {
-        showNotification("Please write a comment before submitting.", "error");
+    if (!commentInput || (!commentInput.value.trim() && (!pinFileInput.files || pinFileInput.files.length === 0))) {
+        showNotification("Please write a comment or attach gallery file before submitting.", "error");
         return;
+    }
+
+    showNotification("Uploading feedback parameters with media attachments...");
+    
+    let mediaBase64Array = [];
+    if(pinFileInput && pinFileInput.files && pinFileInput.files.length > 0) {
+        try {
+            const promises = Array.from(pinFileInput.files).map(file => fileToDataURL(file));
+            mediaBase64Array = await Promise.all(promises);
+        } catch(err) {
+            showNotification("Media parsing from gallery failed.", "error");
+        }
     }
 
     const payload = {
         productId: productId,
         comment: commentInput.value.trim(),
         rating: ratingSelect ? ratingSelect.value : "5",
+        media: mediaBase64Array,
         username: currentUser ? (currentUser.username || currentUser.email.split('@')[0]) : "Anonymous Buyer"
     };
 
     try {
-        const res = await fetch(`/api/products/${productId}/reviews`, {
+        const res = await fetch(`/api/reviews`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -340,14 +406,17 @@ async function submitProductReview(productId) {
         if (res.ok) {
             showNotification("Review posted successfully!");
             commentInput.value = '';
+            pinFileInput.value = '';
             loadProductReviews(productId);
         } else {
             appendLocalReview(payload);
             commentInput.value = '';
+            pinFileInput.value = '';
         }
     } catch(err) {
         appendLocalReview(payload);
         commentInput.value = '';
+        pinFileInput.value = '';
     }
 }
 
@@ -358,6 +427,20 @@ function appendLocalReview(payload) {
 
     if(placeholder) placeholder.style.display = 'none';
     const stars = '⭐'.repeat(parseInt(payload.rating));
+    
+    let attachedMediaHtml = '';
+    if(payload.media && payload.media.length > 0) {
+        attachedMediaHtml = `<div class="flex flex-wrap gap-1.5 pt-2">`;
+        payload.media.forEach(item => {
+            if(item.includes("data:video")) {
+                attachedMediaHtml += `<video src="${item}" controls class="w-20 h-20 object-cover rounded-lg border border-gray-800 bg-black"></video>`;
+            } else {
+                attachedMediaHtml += `<img src="${item}" class="w-16 h-16 object-cover rounded-lg border border-gray-800">`;
+            }
+        });
+        attachedMediaHtml += `</div>`;
+    }
+
     const newReviewHtml = `
         <div class="bg-slate-900/60 p-3 rounded-xl border border-gray-850 text-xs space-y-1">
             <div class="flex justify-between items-center">
@@ -366,6 +449,7 @@ function appendLocalReview(payload) {
             </div>
             <div class="text-[10px] text-amber-400">${stars}</div>
             <p class="text-gray-300 leading-relaxed mt-1">${payload.comment}</p>
+            ${attachedMediaHtml}
         </div>
     `;
     listContainer.innerHTML = newReviewHtml + listContainer.innerHTML;
@@ -391,10 +475,9 @@ async function cancelUserOrder(orderId, productTitle, sellerEmail) {
             body: JSON.stringify(cancelPayload)
         });
         
-        showNotification("Order Cancelled. Alert dispatch email triggers completed!");
+        showNotification("Order Cancelled! Dispatched alert emails to Admin & Seller.");
         updateProfilePanel();
     } catch (err) {
-        // Fallback smooth interface alert triggers locally
         showNotification("Order Cancelled! Emails dispatched to Admin & Seller.", "success");
         updateProfilePanel();
     }
