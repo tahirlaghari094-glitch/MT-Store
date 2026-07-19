@@ -4,10 +4,11 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "mt_secure_core_token_hash_engine_2026";
 
 app.use(express.json());
+
+// Serving static assets manually inside serverless execution if needed
 app.use(express.static(path.join(__dirname, '/')));
 
 // Secure Email SMTP Channel Configuration
@@ -81,13 +82,12 @@ app.delete('/api/products/delete/:id', verifyUserToken, (req, res) => {
 
     realProductsDatabase = realProductsDatabase.filter(p => p.id !== elementId);
 
-    // FIX: Admin email aur Seller email dono ko loop/comma lagakar target kiya gaya hai
     const adminEmail = process.env.EMAIL_USER || 'lagharitahir08@gmail.com'; 
     const sellerEmail = req.userData.email; 
 
     const optionsPayload = {
         from: adminEmail,
-        to: `${adminEmail}, ${sellerEmail}`, // Dono emails par alert chala jaega
+        to: `${adminEmail}, ${sellerEmail}`,
         subject: `Cancellation Engine Notification - Item dropped: ${itemReference.name}`,
         text: `Hello,\n\nThis system transmission serves to verify that the following data listing asset has been dropped and completely cancelled:\n\nProduct Title: ${itemReference.name}\nPrice Index: PKR ${itemReference.price}\n\nOperation completed from database records engine safely.\n\nBest Regards,\nMT Store System Control Core.`
     };
@@ -102,10 +102,10 @@ app.delete('/api/products/delete/:id', verifyUserToken, (req, res) => {
     });
 });
 
+// Fallback HTML router entry point compatible with Vercel paths
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`MT Store processing pipeline listening on network active port http://localhost:${PORT}`);
-});
+// Vercel serverless export setup
+module.exports = app;
