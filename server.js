@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer'); // 🚀 Nodemailer integrated
+const nodemailer = require('nodemailer'); 
 
 const app = express();
 
@@ -29,7 +29,7 @@ const sendHtmlEmail = async (to, subject, htmlContent) => {
     try {
         const mailOptions = {
             from: process.env.GMAIL_USER,
-            to: to, // Automatically sends to any target email
+            to: to, 
             subject: subject,
             html: htmlContent
         };
@@ -84,7 +84,7 @@ const ProductSchema = new mongoose.Schema({
     description: String,
     category: String,
     imageUrl: String,
-    imageUrls: [String], // Array to support multiple image storage
+    imageUrls: [String], 
     videoUrl: String,
     paymentDetails: String,
     address: String,
@@ -112,12 +112,14 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
-// 🆕 Review Schema (Added for Merchant/Product Reviews)
+// Review Schema (Updated with rating and username mapping handles)
 const ReviewSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     productId: { type: String, required: true },
     comment: String,
-    media: [String], // Array to store multiple Base64 items (images/videos)
+    rating: { type: String, default: "5" },
+    username: { type: String, default: "Anonymous Buyer" },
+    media: [String], 
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
 const Review = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
@@ -170,10 +172,8 @@ app.post('/api/users/update', async (req, res) => {
 });
 
 // ==========================================
-// 💬 MERCHANT / PRODUCT REVIEWS APIS (🆕 ADDED)
+// 💬 MERCHANT / PRODUCT REVIEWS APIS
 // ==========================================
-
-// 1. Get Reviews for a specific product
 app.get('/api/reviews/:productId', async (req, res) => {
     try {
         const productReviews = await Review.find({ productId: req.params.productId }).sort({ createdAt: -1 });
@@ -183,13 +183,9 @@ app.get('/api/reviews/:productId', async (req, res) => {
     }
 });
 
-// 2. Post a review with Base64 media arrays (Direct from Gallery)
 app.post('/api/reviews', async (req, res) => {
-    const { productId, comment, media } = req.body; // media must be an array of Base64 strings
+    const { productId, comment, rating, username, media } = req.body; 
     if (!productId) return res.status(400).json({ error: "Product identification is missing." });
-    if (!comment && (!media || media.length === 0)) {
-        return res.status(400).json({ error: "Review cannot be posted completely empty." });
-    }
 
     try {
         const reviewId = 'REV-' + Date.now();
@@ -197,7 +193,9 @@ app.post('/api/reviews', async (req, res) => {
             id: reviewId,
             productId,
             comment: comment || "",
-            media: media || [] // Safely handles incoming array of files
+            rating: rating || "5",
+            username: username || "Anonymous Buyer",
+            media: media || [] 
         });
 
         await newReview.save();
@@ -244,6 +242,69 @@ app.get('/api/orders/user/:email', async (req, res) => {
         res.json(updatedOrders);
     } catch (e) {
         res.status(500).json({ error: "Failed to fetch orders" });
+    }
+});
+
+// ==========================================
+// 🚨 ORDER CANCELLATION EMAIL TRIGGER (🆕 ADDED)
+// ==========================================
+app.post('/api/orders/cancel', async (req, res) => {
+    const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
+    
+    try {
+        // Fetch order details from DB to append address and customer data metrics securely
+        const detailedOrderInfo = await Order.findOne({ id: orderId });
+        
+        // Fetch specific seller details from product pipeline securely
+        let sellerContactDetailsHtml = `<p>No additional profile context synced.</p>`;
+        if(sellerEmail) {
+            const matchedSellerProduct = await Product.findOne({ sellerEmail: sellerEmail.toLowerCase() });
+            if(matchedSellerProduct) {
+                sellerContactDetailsHtml = `
+                    <p><strong>Merchant Shop Address:</strong> ${matchedSellerProduct.address || 'N/A'}</p>
+                    <p><strong>Merchant Contact Phone:</strong> ${matchedSellerProduct.contactNumber || 'N/A'}</p>
+                `;
+            }
+        }
+
+        const cancellationEmailHtml = `
+            <div style="font-family: Arial, sans-serif; border: 2px solid #ef4444; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0b0f19; color: #f3f4f6;">
+                <h2 style="color: #ef4444; margin-top: 0; border-bottom: 1px solid #1e293b; padding-bottom: 10px;">⚠️ Order Cancellation Alert</h2>
+                <p>An active store order has been cancelled by the customer.</p>
+                
+                <h3 style="color: #f97316;">📦 Cancelled Order Reference Metrics</h3>
+                <p><strong>Order Reference ID:</strong> ${orderId}</p>
+                <p><strong>Product Title:</strong> ${productTitle}</p>
+                <p><strong>Action Triggered By Account:</strong> ${cancelledBy}</p>
+                <p><strong>Quantity Record:</strong> ${detailedOrderInfo ? detailedOrderInfo.quantity : '1'}</p>
+                <p><strong>Price Evaluation:</strong> PKR ${detailedOrderInfo ? detailedOrderInfo.price : 'N/A'}</p>
+
+                <h3 style="color: #38bdf8; margin-top: 20px;">👤 Buyer Metrics</h3>
+                <p><strong>Name:</strong> ${detailedOrderInfo ? detailedOrderInfo.buyerName : 'N/A'}</p>
+                <p><strong>Phone:</strong> ${detailedOrderInfo ? detailedOrderInfo.buyerPhone : 'N/A'}</p>
+                <p><strong>Shipping Address:</strong> ${detailedOrderInfo ? detailedOrderInfo.buyerAddress : 'N/A'}</p>
+
+                <h3 style="color: #facc15; margin-top: 20px;">💼 Registered Seller Information</h3>
+                <p><strong>Seller Login Email:</strong> ${sellerEmail || 'Platform Managed'}</p>
+                ${sellerContactDetailsHtml}
+            </div>
+        `;
+
+        // Deliver cancellation triggers to Admin
+        await sendHtmlEmail(ADMIN_EMAIL, `🚨 Order Cancelled Alert: ${orderId}`, cancellationEmailHtml);
+        
+        // Deliver cancellation triggers to registered product Seller
+        if(sellerEmail && sellerEmail.trim() !== "") {
+            await sendHtmlEmail(sellerEmail.toLowerCase(), `⚠️ Notice: Order ${orderId} has been cancelled`, cancellationEmailHtml);
+        }
+
+        // Delete order from system database or flag context
+        await Order.deleteOne({ id: orderId });
+
+        res.json({ success: true, message: "Cancellation alert processes successfully executed." });
+    } catch(err) {
+        console.error("Cancellation transmission errors: ", err);
+        res.status(500).json({ error: "Failed to dispatch email parameters correctly." });
     }
 });
 
@@ -307,9 +368,6 @@ app.get('/api/products/approve/:id', async (req, res) => {
     }
 });
 
-// ==========================================
-// ⚡ UPDATED ORDER PROCESSING PIPELINE
-// ==========================================
 app.post('/api/orders', async (req, res) => {
     const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
     if (!items || items.length === 0 || !buyerEmail) return res.status(400).json({ error: "Incomplete order details." });
@@ -318,10 +376,7 @@ app.post('/api/orders', async (req, res) => {
         for (const item of items) {
             const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
             
-            // Safe fallback logic for item identifier string matching
             const targetProductId = item.id || item._id;
-
-            // Secure lookup for product listing to match vendor ownership
             const linkedProduct = await Product.findOne({ id: targetProductId.toString() });
             const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
 
@@ -358,11 +413,9 @@ app.post('/api/orders', async (req, res) => {
                 </div>
             `;
 
-            // Deliveries pipeline
             await sendHtmlEmail(buyerEmail, `🛍️ MT Store Order Confirmation: ${orderId}`, detailedOrderHtml);
             await sendHtmlEmail(ADMIN_EMAIL, `🔔 Platform Notification: Order ${orderId}`, detailedOrderHtml);
             
-            // Dynamic check for successful seller matching extraction
             if (sellerTargetEmail) {
                 await sendHtmlEmail(sellerTargetEmail.toLowerCase(), `💼 New Order Received for Your Product: ${orderId}`, detailedOrderHtml);
             }
