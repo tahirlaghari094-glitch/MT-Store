@@ -1,13 +1,14 @@
 {
   "version": 2,
-  "rewrites": [
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/server.js"
+      "handle": "filesystem"
     },
     {
-      "source": "/((?!api/).*)",
-      "destination": "/$1"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
