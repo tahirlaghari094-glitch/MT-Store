@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 
 const app = express();
-
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
@@ -29,21 +28,21 @@ const sendHtmlEmail = async (to, subject, htmlContent) => {
             subject: subject,
             html: htmlContent
         };
-        const info = await transporter.sendMail(mailOptions);
-        console.log("🚀 Email Sent Successfully:", info.messageId);
-        return info;
+        await transporter.sendMail(mailOptions);
+        console.log("🚀 Email routed successfully to:", to);
     } catch (error) {
-        console.log("❌ Email Sending Failed: ", error);
+        console.log("❌ Email configuration error: ", error);
     }
 };
 
 const MONGODB_URI = process.env.MONGODB_URI;
 if (MONGODB_URI) {
     mongoose.connect(MONGODB_URI)
-        .then(() => console.log("🔌 MongoDB Connected!"))
-        .catch(err => console.error("❌ MongoDB Error: ", err));
+        .then(() => console.log("🔌 MongoDB Connected Successfully!"))
+        .catch(err => console.error("❌ MongoDB Engine Error: ", err));
 }
 
+// DATABASE SCHEMAS DEFINITION LOOP
 const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true },
     username: String,
@@ -58,13 +57,7 @@ const ProductSchema = new mongoose.Schema({
     description: String,
     category: String,
     imageUrl: String,
-    imageUrls: [String],
-    videoUrl: String,
-    paymentDetails: String,
-    address: String,
-    contactNumber: String,
     sellerEmail: { type: String, lowercase: true },
-    transactionId: String,
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -76,8 +69,8 @@ const OrderSchema = new mongoose.Schema({
     title: String,
     price: Number,
     quantity: Number,
-    buyerName: String,
     buyerEmail: { type: String, lowercase: true },
+    buyerName: String,
     buyerPhone: String,
     buyerAddress: String,
     status: { type: String, default: 'Processing' },
@@ -85,64 +78,23 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
-const ReviewSchema = new mongoose.Schema({
-    productId: { type: String, required: true },
-    comment: String,
-    rating: String,
-    username: String,
-    date: { type: String, default: () => new Date().toLocaleDateString() },
-    createdAt: { type: Date, default: Date.now }
-});
-const Review = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
-
-// Static Server Config
+// STATIC FILES ROUTER MIDDLEWARE
 const rootPath = process.cwd();
 app.use(express.static(rootPath));
 app.use(express.static(path.join(rootPath, 'public')));
 
-// APIS
+// APIS ACTIONS ENDPOINTS
 app.post('/api/users/login', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email required" });
     try {
         let user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
-            user = new User({ email: email.toLowerCase(), username: email.split('@')[0], profileImage: '' });
+            user = new User({ email: email.toLowerCase(), username: email.split('@')[0] });
             await user.save();
         }
         res.json({ success: true, user });
-    } catch (e) {
-        res.status(500).json({ error: "Server Error" });
-    }
-});
-
-app.post('/api/users/update', async (req, res) => {
-    const { email, username, profileImage } = req.body;
-    try {
-        const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user) return res.status(404).json({ error: "User not found" });
-        if (username) user.username = username;
-        if (profileImage) user.profileImage = profileImage;
-        await user.save();
-        res.json({ success: true, user });
-    } catch (e) { res.status(500).json({ error: "Update failed" }); }
-});
-
-app.get('/api/products/:productId/reviews', async (req, res) => {
-    try {
-        const productReviews = await Review.find({ productId: req.params.productId }).sort({ createdAt: -1 });
-        res.json(productReviews);
     } catch (e) { res.status(500).json({ error: "Error" }); }
-});
-
-app.post('/api/products/:productId/reviews', async (req, res) => {
-    const { comment, rating, username } = req.body;
-    if (!comment) return res.status(400).json({ error: "Review empty" });
-    try {
-        const newReview = new Review({ productId: req.params.productId, comment, rating: rating || "5", username: username || "Anonymous" });
-        await newReview.save();
-        res.status(201).json({ success: true, review: newReview });
-    } catch (error) { res.status(500).json({ error: "Error" }); }
 });
 
 app.get('/api/products', async (req, res) => {
@@ -159,46 +111,37 @@ app.get('/api/products/seller/:email', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
-// 🛠️ DELETE UPLOADED PRODUCT ENDPOINT
 app.delete('/api/products/delete/:id', async (req, res) => {
     try {
         await Product.deleteOne({ id: req.params.id });
-        res.json({ success: true, message: "Item deleted securely from Database." });
-    } catch (e) {
-        res.status(500).json({ error: "Failed to delete item from database pipeline." });
-    }
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
 app.get('/api/orders/user/:email', async (req, res) => {
     try {
         const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
-        const updatedOrders = [];
-        for (let order of userOrders) {
-            const prod = await Product.findOne({ id: order.productId });
-            updatedOrders.push({
-                ...order._doc,
-                productImage: prod ? prod.imageUrl : '',
-                sellerEmail: prod ? prod.sellerEmail : ''
-            });
+        const records = [];
+        for (let o of userOrders) {
+            const p = await Product.findOne({ id: o.productId });
+            records.push({ ...o._doc, sellerEmail: p ? p.sellerEmail : '' });
         }
-        res.json(updatedOrders);
+        res.json(records);
     } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, imageBase64, imageUrls, videoBase64, paymentDetails, address, contactNumber, sellerEmail, transactionId } = req.body;
+    const { title, price, description, category, imageBase64, sellerEmail } = req.body;
     try {
         const productId = Date.now().toString();
-        const newProduct = new Product({
-            id: productId, title, price: parseFloat(price), description, category,
-            imageUrl: imageBase64 || (imageUrls && imageUrls[0]), imageUrls: imageUrls || [imageBase64],
-            videoUrl: videoBase64 || '', paymentDetails, address, contactNumber, sellerEmail, transactionId
-        });
+        const newProduct = new Product({ id: productId, title, price: parseFloat(price), description, category, imageUrl: imageBase64, sellerEmail });
         await newProduct.save();
+
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
-        const emailHtml = `<h2>New Store Submission Pending</h2><p>Seller: ${sellerEmail}</p><p>Item: ${title}</p><a href="${approveUrl}">Verify Live Now</a>`;
-        await sendHtmlEmail(ADMIN_EMAIL, `🚨 Approve ${title}`, emailHtml);
-        res.status(201).json({ message: "Listed for review." });
+        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor: ${sellerEmail}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
+        await sendHtmlEmail(ADMIN_EMAIL, `Approve ${title}`, emailHtml);
+
+        res.status(201).json({ message: "Dispatched pipeline." });
     } catch (error) { res.status(500).json({ error: "Error" }); }
 });
 
@@ -208,35 +151,36 @@ app.get('/api/products/approve/:id', async (req, res) => {
         if (!product) return res.send("Not Found");
         product.status = 'approved';
         await product.save();
-        await sendHtmlEmail(product.sellerEmail, `🚀 Product Live!`, `<h2>Your item "${product.title}" is live.</h2>`);
-        res.send("<h1>✅ Product Approved!</h1>");
+        await sendHtmlEmail(product.sellerEmail, `🚀 Item Live Alert!`, `<h2>Your product "${product.title}" is now approved.</h2>`);
+        res.send("<h1>Approved Live!</h1>");
     } catch (e) { res.send("Error"); }
 });
 
-// 🚀 FIXED: Dynamic cancellation pipeline triggering alerts to BOTH Admin & Seller
+// 🚨 FIXED: Cancellation logic dispatches warning emails to BOTH Admin & Linked Seller
 app.post('/api/orders/cancel', async (req, res) => {
     const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
     try {
         await Order.deleteOne({ id: orderId });
-        const cancelEmailHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0b0f19; color: #f3f4f6; border-radius: 12px;">
-                <h2 style="color: #ef4444;">❌ Order Cancelled Alert</h2>
-                <p><strong>Order ID:</strong> ${orderId}</p>
-                <p><strong>Product Name:</strong> ${productTitle}</p>
-                <p><strong>Action Executed By:</strong> ${cancelledBy}</p>
+        
+        const cancellationHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444;">
+                <h3 style="color: #ef4444;">❌ Order Cancellation Notice</h3>
+                <p><strong>Order ID Instance:</strong> ${orderId}</p>
+                <p><strong>Product Target:</strong> ${productTitle}</p>
+                <p><strong>Cancelled Processing Request By:</strong> ${cancelledBy}</p>
             </div>
         `;
-        // Send alert email to Admin
-        await sendHtmlEmail(ADMIN_EMAIL, `❌ Order Cancelled: ${orderId}`, cancelEmailHtml);
+
+        // Route alert to Admin
+        await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
         
-        // Send alert email to Seller (Fixed destination delivery logic)
+        // Route alert dynamically to Seller
         if (sellerEmail && sellerEmail.trim() !== '') {
-            await sendHtmlEmail(sellerEmail.trim(), `❌ Order Cancelled: ${orderId}`, cancelEmailHtml);
+            await sendHtmlEmail(sellerEmail.trim(), `Cancellation Notice: Order ${orderId}`, cancellationHtml);
         }
+
         res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: "Failed" });
-    }
+    } catch (error) { res.status(500).json({ error: "Pipeline failure" }); }
 });
 
 app.post('/api/orders', async (req, res) => {
@@ -244,23 +188,20 @@ app.post('/api/orders', async (req, res) => {
     try {
         for (const item of items) {
             const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-            const linkedProduct = await Product.findOne({ id: item.id });
-            const sellerTargetEmail = linkedProduct ? linkedProduct.sellerEmail : null;
-
-            const newOrder = new Order({ id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity, buyerName, buyerEmail, buyerPhone, buyerAddress });
+            const newOrder = new Order({ id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity, buyerEmail, buyerName, buyerPhone, buyerAddress });
             await newOrder.save();
 
-            const orderHtml = `<h2>Order Report: ${orderId}</h2><p>Item: ${item.title}</p><p>Buyer: ${buyerName}</p>`;
-            await sendHtmlEmail(buyerEmail, `🛍️ Order Placed: ${orderId}`, orderHtml);
-            await sendHtmlEmail(ADMIN_EMAIL, `🔔 Platform Order: ${orderId}`, orderHtml);
-            if (sellerTargetEmail) {
-                await sendHtmlEmail(sellerTargetEmail, `💼 New Order for your Product: ${orderId}`, orderHtml);
-            }
+            const orderHtml = `<h2>New Order Created: ${orderId}</h2><p>Title: ${item.title}</p>`;
+            await sendHtmlEmail(buyerEmail, `Order Placed`, orderHtml);
+            await sendHtmlEmail(ADMIN_EMAIL, `New Platform Order Request`, orderHtml);
         }
-        res.json({ message: "Success" });
+        res.json({ message: "Dispatched order pipelines." });
     } catch (error) { res.status(500).json({ error: "Error" }); }
 });
 
 app.get(/^\/(?!api).*/, (req, res) => { res.sendFile(path.join(rootPath, 'index.html')); });
-if (process.env.NODE_ENV !== 'production') { app.listen(PORT); }
+
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => console.log(`Server executing safely on port ${PORT}`));
+}
 module.exports = app;
