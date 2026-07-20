@@ -1,114 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="google-site-verification" content="5tbBo1UOGrfI216D1VNVz5Ha0PUSY8ttzTJ3XuJjzh4" />
+    <meta name="google-site-verification" content="5tbBo1UOGrfI216D1VNVz5Ha0PUSY8ttzTJ3XuJjzh4" /
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MT Store - Premium Multi-Vendor Hub</title>
-    <!-- FontAwesome for Pin and Nav Icons -->
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: #0b0f19; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-bottom: 90px; }
-        .container { max-width: 600px; margin: 20px auto; padding: 15px; }
-        
-        /* Seller Card Style */
-        .profile-card { background: #111827; border-radius: 12px; padding: 20px; border: 1px solid #1f2937; text-align: center; margin-bottom: 20px; }
-        .avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #1f2937; }
-        .badge { background: #e11d48; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 5px; }
-        
-        /* Titles and Buttons */
-        .section-title { font-size: 14px; color: #9ca3af; letter-spacing: 1px; margin-bottom: 12px; text-transform: uppercase; text-align: left; font-weight: 600; }
-        .add-item-btn { width: 100%; background: #2563eb; border: none; color: white; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; display: block; font-size: 14px; transition: background 0.2s; }
-        .add-item-btn:hover { background: #1d4ed8; }
-        
-        /* Dynamic List Items */
-        .order-item { background: #1f2937; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2d3748; }
-        .cancel-btn { background: #e11d48; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px; }
-        .cancel-btn:hover { background: #be123c; }
-
-        /* Central Command Support UI */
-        .central-support { background: #111827; border-radius: 12px; padding: 15px; border: 1px solid #1f2937; margin-top: 20px; }
-        .support-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .support-logo { background: #e11d48; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
-        
-        /* Comment Box Input Area */
-        .comment-box-wrapper { display: flex; align-items: center; background: #1f2937; border-radius: 8px; padding: 5px 12px; border: 1px solid #2d3748; }
-        .comment-box-wrapper textarea { flex: 1; background: transparent; border: none; color: white; resize: none; outline: none; padding: 8px 0; height: 40px; font-family: inherit; font-size: 14px; }
-        .pin-btn { background: transparent; border: none; color: #9ca3af; cursor: pointer; padding: 8px; font-size: 18px; display: flex; align-items: center; justify-content: center; }
-        .pin-btn:hover { color: #3b82f6; }
-
-        /* Bottom Nav Bar */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111827; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #1f2937; z-index: 100; }
-        .nav-item { background: transparent; border: none; color: #9ca3af; display: flex; flex-direction: column; align-items: center; font-size: 12px; cursor: pointer; text-decoration: none; }
-        .nav-item.active { color: #3b82f6; }
-        .nav-item i { font-size: 20px; margin-bottom: 4px; }
+        body {
+            background-color: #0b1329;
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .tab-view {
+            display: none;
+        }
+        .tab-view.active {
+            display: block;
+        }
+        .seller-sub-tab {
+            display: none;
+        }
+        .seller-sub-tab.active {
+            display: block;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f97316;
+        }
     </style>
 </head>
-<body>
+<body class="bg-[#0b1329] text-white min-h-screen flex flex-col justify-between select-none">
 
-    <div class="container">
-        <!-- Main Content Area: Seller View (Default state shown on Account screen) -->
-        <div id="sellerViewContainer">
-            <div class="profile-card">
-                <div style="position: relative; display: inline-block;">
-                    <img src="https://via.placeholder.com/80" alt="Muhammad Tahir" class="avatar">
-                </div>
-                <h2 style="font-size: 20px; margin-top: 10px;">Muhammad Tahir <i class="fas fa-pen" style="font-size: 14px; cursor: pointer; color: #9ca3af; margin-left: 5px;"></i></h2>
-                <p style="color: #9ca3af; margin: 4px 0 8px 0; font-size: 14px;">lagharitahir08@gmail.com</p>
-                <span class="badge">SELLER ACCOUNT</span>
-            </div>
+    <!-- TOAST NOTIFICATION POPUP -->
+    <div id="toast-notification" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 px-5 py-3.5 rounded-2xl shadow-xl transition duration-300 transform -translate-y-4 opacity-0 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-xl"></i>
+        <span id="toast-message" class="text-xs font-bold tracking-wide">Action completed successfully!</span>
+    </div>
 
-            <!-- Changed heading to: YOUR UPLOADED PRODUCTS -->
-            <h3 class="section-title">YOUR UPLOADED PRODUCTS</h3>
-
-            <!-- Added: Add New Item Button -->
-            <button class="add-item-btn" id="addNewItemBtn"><i class="fas fa-plus" style="margin-right: 6px;"></i> Add New Item</button>
-
-            <!-- Main dynamic list interface container -->
-            <div id="dynamicListContainer">
-                <!-- Data lists load dynamically through main.js -->
-            </div>
+    <!-- HEADER TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 bg-[#0b1329]/80 backdrop-blur-md border-b border-gray-900 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="switchTab('home')">
+            <span class="text-orange-500 font-black text-xl tracking-tighter">MT STORE</span>
+            <span id="user-status-badge" class="hidden text-[8px] bg-orange-500/10 border border-orange-500/30 text-orange-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">common profile</span>
         </div>
-
-        <!-- Central Command Support Section (Only displays inside Message mode) -->
-        <div class="central-support" id="centralSupportSection" style="display: none;">
-            <div class="support-header">
-                <span class="support-logo">MT</span>
-                <strong>Central Command Support</strong>
-            </div>
-            
-            <div class="comment-box-wrapper">
-                <textarea id="commentInput" placeholder="Write a comment or message..."></textarea>
-                
-                <!-- Hidden file selector field for direct gallery access -->
-                <input type="file" id="hiddenFileInput" style="display: none;" accept="image/*,video/*" multiple>
-                
-                <!-- Pin icon clickable trigger -->
-                <button type="button" class="pin-btn" id="pinAttachmentBtn" title="Attach Files/Gallery">
-                    <i class="fas fa-paperclip"></i>
+        
+        <div class="relative">
+            <button onclick="toggleDropdown()" class="w-9 h-9 bg-slate-900 border border-gray-800 rounded-full flex items-center justify-center hover:border-gray-700 transition">
+                <i class="fa-solid fa-ellipsis-vertical text-gray-400 text-sm"></i>
+            </button>
+            <!-- DROPDOWN OPTIONS MENU -->
+            <div id="accountDropdown" class="hidden absolute right-0 mt-2 w-48 bg-slate-900 border border-gray-850 rounded-2xl shadow-2xl overflow-hidden z-50">
+                <button onclick="setAccountType('common')" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-slate-800 flex items-center gap-2 transition text-gray-300">
+                    <i class="fa-solid fa-bag-shopping text-orange-500"></i> Buyer Dashboard
+                </button>
+                <button onclick="setAccountType('seller')" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-slate-800 flex items-center gap-2 transition text-gray-300">
+                    <i class="fa-solid fa-store text-orange-500"></i> Become a Seller
+                </button>
+                <hr class="border-gray-850">
+                <button onclick="logout()" class="w-full text-left px-4 py-3 text-xs font-bold hover:bg-rose-950/40 text-rose-400 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Clear/Logout Profile
                 </button>
             </div>
         </div>
-    </div>
+    </header>
 
-    <!-- Persistent Bottom Tab Controls Bar -->
-    <nav class="bottom-nav">
-        <button class="nav-item" id="homeTab" onclick="switchTab('home')">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
+    <!-- MAIN BODY CONTROLLER LAYOUT CONTAINER -->
+    <main class="flex-grow max-w-md w-full mx-auto px-4 pt-4 pb-28 overflow-y-auto">
+
+        <!-- 1. HOME PRODUCT GRID VIEW -->
+        <div id="home-view" class="tab-view active space-y-4">
+            <div class="bg-gradient-to-br from-orange-600 to-amber-600 rounded-3xl p-5 shadow-lg relative overflow-hidden">
+                <h2 class="text-xl font-black leading-tight max-w-[70%]">Secure Cash on Delivery Marketplace</h2>
+                <p class="text-[10px] text-white/80 mt-1 font-semibold">Premium products verified manually by central management.</p>
+                <i class="fa-solid fa-shield-halved absolute right-4 bottom-4 text-7xl opacity-15"></i>
+            </div>
+            
+            <h2 class="text-sm font-black text-gray-400 uppercase tracking-widest pt-2">Available Products</h2>
+            <div id="product-grid" class="grid grid-cols-2 gap-3 pb-6">
+                <!-- Injected dynamically -->
+            </div>
+        </div>
+
+        <!-- 2. PRODUCT DETAILED INFO VIEW & REVIEWS CONTAINER -->
+        <div id="detail-view" class="tab-view space-y-5">
+            <button onclick="switchTab('home')" class="text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1 transition py-1">
+                <i class="fa-solid fa-arrow-left"></i> Back to Marketplace
+            </button>
+            <div id="product-detail-content" class="space-y-5">
+                <!-- main.js dynamic injection -->
+            </div>
+        </div>
+
+        <!-- 3. SELLER CONTROL HUB (BECOME A SELLER) -->
+        <div id="seller-view" class="tab-view space-y-4">
+            <div class="bg-slate-950 border border-gray-900 rounded-3xl p-4 flex gap-2">
+                <button onclick="switchSellerSubTab('upload')" id="btn-sub-upload" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950">
+                    <i class="fa-solid fa-plus-circle mr-1"></i> Add a New Item
+                </button>
+                <button onclick="switchSellerSubTab('history')" id="btn-sub-history" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-slate-900 border border-gray-800 text-gray-300 hover:text-white">
+                    <i class="fa-solid fa-boxes-stacked mr-1"></i> Your Uploaded Items
+                </button>
+            </div>
+
+            <!-- SUB TAB: UPLOAD FORM -->
+            <div id="seller-upload-tab" class="seller-sub-tab active bg-slate-950 border border-gray-900 rounded-3xl p-5">
+                <h3 class="text-base font-black text-orange-500 mb-1">Verify New Merchant Listing</h3>
+                <p class="text-[10px] text-gray-400 mb-4 leading-relaxed">Fill all accurate tracking metrics. Admin manually reviews the TxID within 1 hour.</p>
+                
+                <form id="product-upload-form" class="space-y-3 text-xs">
+                    <input type="text" id="p-title" placeholder="Product Display Title *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="number" id="p-price" placeholder="Retail Selling Price (PKR) *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <textarea id="p-desc" placeholder="Product specifications, features & variants..." rows="3" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition resize-none"></textarea>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="bg-slate-900 border border-dashed border-gray-850 rounded-xl p-3 text-center cursor-pointer hover:border-orange-500 block transition">
+                            <span id="img-preview-label" class="text-[10px] text-gray-400 block font-semibold">Select 3+ Images *</span>
+                            <input type="file" id="p-image-file" multiple accept="image/*" required onchange="previewMedia(this, 'img-preview-label')" class="hidden">
+                        </label>
+                        <label class="bg-slate-900 border border-dashed border-gray-850 rounded-xl p-3 text-center cursor-pointer hover:border-orange-500 block transition">
+                            <span id="vid-preview-label" class="text-[10px] text-gray-400 block font-semibold">Select Video (Optional)</span>
+                            <input type="file" id="p-video-file" accept="video/*" onchange="previewMedia(this, 'vid-preview-label')" class="hidden">
+                        </label>
+                    </div>
+
+                    <div class="border-t border-gray-900 pt-3 mt-2 space-y-2">
+                        <span class="text-[10px] text-orange-400 font-bold block uppercase tracking-wider">Verification Fee Parameters (PKR 50)</span>
+                        <input type="text" id="p-txid" placeholder="JazzCash / EasyPaisa Transaction ID *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                        <input type="text" id="p-payment-details" placeholder="Sender Account Number / Title Name *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    </div>
+
+                    <div class="border-t border-gray-900 pt-3 space-y-2">
+                        <span class="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Merchant Hub Contact Info</span>
+                        <input type="text" id="p-address" placeholder="Physical Pickup Store Address *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                        <input type="tel" id="p-contact" placeholder="Customer Support Contact Number *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                        <input type="email" id="p-email" placeholder="Registered Login Email *" required class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    </div>
+
+                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition mt-2 shadow-lg">Submit Verification Application</button>
+                </form>
+            </div>
+
+            <!-- SUB TAB: UPLOAD HISTORY -->
+            <div id="seller-history-tab" class="seller-sub-tab space-y-2">
+                <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider px-1">Your Live Store Inventory</h4>
+                <div id="seller-listings-container" class="space-y-2">
+                    <!-- Javascript populates history items here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. CHECKOUT BASKET SHOPPING CART VIEW -->
+        <div id="cart-view" class="tab-view space-y-4">
+            <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest">Shopping Checkout Basket</h3>
+            <div id="cart-items" class="space-y-3">
+                <!-- Dynamic cart list -->
+            </div>
+            
+            <div class="bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-3 mt-4">
+                <h4 class="text-xs font-black text-orange-500 uppercase tracking-wider flex items-center gap-1">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Cash on Delivery Shipping Form
+                </h4>
+                <div class="space-y-2.5 text-xs">
+                    <input type="text" id="buyer-name" placeholder="Full Name *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="email" id="buyer-email" placeholder="Email Address *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="tel" id="buyer-phone" placeholder="Mobile Contact Number *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="text" id="buyer-address" placeholder="Complete Drop-off Home Address *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                </div>
+                <button onclick="checkout()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-4 rounded-xl text-xs transition uppercase tracking-wider shadow-lg">Confirm Order (COD Delivery)</button>
+            </div>
+        </div>
+
+        <!-- 5. ACCOUNT INTERFACE PROFILE VIEW -->
+        <div id="account-view" class="tab-view space-y-4">
+            <!-- AUTH BOX -->
+            <div id="auth-box" class="bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-3 text-center">
+                <i class="fa-solid fa-circle-user text-4xl text-gray-600"></i>
+                <div>
+                    <h3 class="font-extrabold text-sm">Account Synchronization</h3>
+                    <p class="text-[10px] text-gray-400">Sync profile metrics across multiple platforms.</p>
+                </div>
+                <div class="space-y-2 text-xs text-left mt-2">
+                    <input type="email" id="auth-email" placeholder="Enter Account Email *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                    <input type="password" id="auth-password" placeholder="Account Password *" class="w-full bg-slate-900 border border-gray-850 rounded-xl p-3 text-white outline-none focus:border-orange-500 transition">
+                </div>
+                <button onclick="handleAuth()" class="w-full bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3 rounded-xl text-xs transition uppercase">Access / Create Profile</button>
+            </div>
+
+            <!-- PROFILE PANEL (INCLUDES PLACED ORDERS WITH NEW CANCEL BUTTON) -->
+            <div id="profile-panel" class="hidden bg-slate-950 border border-gray-900 rounded-3xl p-5 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="relative cursor-pointer group" onclick="triggerProfileImageUpload()">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-xl font-black text-slate-950 uppercase overflow-hidden shadow-md">
+                            <span id="avatar-text">MT</span>
+                            <img id="avatar-image-display" src="" class="hidden w-full h-full object-cover">
+                        </div>
+                        <div class="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                            <i class="fa-solid fa-camera text-white text-xs"></i>
+                        </div>
+                        <input type="file" id="hidden-profile-image-input" accept="image/*" class="hidden" onchange="uploadProfileImageFile(this)">
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 id="panel-username" class="font-black text-base text-white">Guest User</h3>
+                            <button onclick="editProfileUsername()" class="text-gray-400 hover:text-orange-400 transition text-[10px]"><i class="fa-solid fa-pen"></i></button>
+                        </div>
+                        <p id="panel-email" class="text-xs text-gray-400">syncing details...</p>
+                        <span id="panel-role" class="inline-block text-[8px] font-black uppercase tracking-widest bg-slate-900 border border-gray-800 text-orange-400 px-2 py-0.5 rounded-md mt-1">common account</span>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-900 pt-3 space-y-2">
+                    <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider">Your Placed Orders Summary</h4>
+                    <div id="orders-summary-container" class="space-y-2">
+                        <!-- Dynamic personal orders container -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. MT HUB CHAT MESSAGES VIEW -->
+        <div id="messages-view" class="tab-view flex flex-col h-[75vh] bg-slate-950 border border-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+            <div class="bg-slate-900 border-b border-gray-850 p-4 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 font-bold text-xs">MT</div>
+                <div>
+                    <h3 class="font-extrabold text-xs">Central Command Support</h3>
+                    <p class="text-[9px] text-emerald-400 flex items-center gap-1 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Network Router Online</p>
+                </div>
+            </div>
+            
+            <div id="chat-box" class="flex-grow p-4 overflow-y-auto flex flex-col gap-3 text-xs">
+                <div class="bg-slate-900 p-3 rounded-2xl max-w-[85%] text-gray-300 leading-relaxed">
+                    Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
+                </div>
+            </div>
+
+            <div class="p-3 border-t border-gray-850 bg-slate-900 flex gap-2">
+                <input type="text" id="chat-input" placeholder="Type support response query..." onkeypress="if(event.key==='Enter') sendMessage()" class="flex-grow bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-orange-500 transition">
+                <button onclick="sendMessage()" class="bg-orange-500 hover:bg-orange-600 text-slate-950 w-11 h-11 rounded-xl flex items-center justify-center shadow-md transition shrink-0">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER NAV DOCK MENU BAR -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#0b1329]/95 backdrop-blur-md border-t border-gray-900 py-2.5 max-w-md mx-auto px-6 flex justify-between items-center shadow-2xl">
+        <button onclick="switchTab('home')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition">
+            <i class="fa-solid fa-house text-base transition duration-200 group-hover:scale-110"></i>
+            <span class="text-[9px] font-bold tracking-wider">Home</span>
         </button>
-        <button class="nav-item" id="messageTab" onclick="switchTab('message')">
-            <i class="fas fa-comment-alt"></i>
-            <span>Message</span>
+        <button onclick="switchTab('messages')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition">
+            <i class="fa-solid fa-comments text-base transition duration-200 group-hover:scale-110"></i>
+            <span class="text-[9px] font-bold tracking-wider">Message</span>
         </button>
-        <button class="nav-item" id="cartTab" onclick="switchTab('cart')">
-            <i class="fas fa-shopping-cart"></i>
-            <span>Cart</span>
+        <button onclick="switchTab('cart')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition relative">
+            <i class="fa-solid fa-cart-shopping text-base transition duration-200 group-hover:scale-110"></i>
+            <span id="cart-count" class="hidden absolute -top-1.5 -right-2 text-[8px] font-black bg-orange-500 text-slate-950 w-4 h-4 rounded-full flex items-center justify-center border border-[#0b1329] shadow-md animate-bounce">0</span>
+            <span class="text-[9px] font-bold tracking-wider">Cart</span>
         </button>
-        <button class="nav-item active" id="accountTab" onclick="switchTab('account')">
-            <i class="fas fa-user-cog"></i>
-            <span>Account</span>
+        <button onclick="switchTab('account')" class="flex flex-col items-center gap-1 group text-gray-400 hover:text-orange-500 transition">
+            <i class="fa-solid fa-user-gear text-base transition duration-200 group-hover:scale-110"></i>
+            <span class="text-[9px] font-bold tracking-wider">Account</span>
         </button>
     </nav>
 
