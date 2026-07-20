@@ -2,156 +2,288 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MT Store - Premium Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #0b0f19; color: #fff; }
+        body { background-color: #0b0f19; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 10px; }
     </style>
 </head>
-<body>
+<body class="antialiased">
 
-    <!-- 1. ADD NEW PRODUCT FORM (WITH POLICY & NEW FIELDS) -->
-    <div class="max-w-lg mx-auto my-10 p-6 bg-slate-900 rounded-lg shadow-xl">
-        <h2 class="text-2xl font-bold text-orange-500 mb-4">Add New Product</h2>
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="bg-slate-900 border-b border-gray-800 sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-black text-orange-500 tracking-wider"><i class="fa-solid fa-bolt mr-2"></i>MT STORE</h1>
+            <div class="flex items-center gap-4">
+                <button class="relative text-gray-300 hover:text-orange-500 transition text-lg">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                    <span id="cartCountBadge" class="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">0</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <!-- Policy Box -->
-        <div class="bg-orange-500/10 border border-orange-500 text-orange-400 p-3 rounded mb-4 text-sm">
-            📌 <strong>Policy:</strong> Kindly send <strong>50 PKR</strong> to <strong>03113841402</strong> via Easypaisa for product listing. Enter your Transaction/Receipt ID below.
-        </div>
-
-        <form id="addProductForm" class="space-y-4">
-            <input type="text" id="pTitle" placeholder="Product Title" class="w-full p-2.html rounded bg-slate-800 border border-gray-700" required>
-            <input type="number" id="pPrice" placeholder="Price (PKR)" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required>
-            <input type="text" id="pImage" placeholder="Image URL" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required>
-            <input type="text" id="pCategory" placeholder="Category" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required>
-            <textarea id="pDesc" placeholder="Product Description" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required></textarea>
+        <!-- COLUMN 1 & 2: FORMS AND PRODUCT SAMPLES -->
+        <div class="lg:col-span-2 space-y-8">
             
-            <hr class="border-gray-700">
-            <h3 class="text-sm font-semibold text-gray-400">Seller Information</h3>
-            
-            <input type="text" id="sName" placeholder="Your Name" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required>
-            <!-- Email is NOT locked, seller can type anything -->
-            <input type="email" id="sEmail" placeholder="Your Notification Email" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required>
-            <input type="tel" id="sPhone" placeholder="Your Phone Number" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required>
-            <input type="text" id="sAddress" placeholder="Shop/Business Address" class="w-full p-2 rounded bg-slate-800 border border-gray-700" required>
-            
-            <div class="bg-slate-800 p-3 rounded border border-gray-700">
-                <label class="block text-xs text-orange-400 mb-1">Easypaisa Receipt ID (Required)</label>
-                <input type="text" id="epReceipt" placeholder="Enter 11-digit Receipt ID" class="w-full p-2 rounded bg-slate-700 border-none text-white" required>
-            </div>
-
-            <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 p-3 rounded font-bold transition">Submit Product</button>
-        </form>
-    </div>
-
-    <!-- 2. PRODUCT DETAIL VIEW (BUY NOW, SELLER DETAILS & REVIEWS WITH PIN ICON) -->
-    <div class="max-w-4xl mx-auto my-10 p-6 bg-slate-900 rounded-lg">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-                <img id="viewProductImage" src="https://via.placeholder.com/400" class="w-full rounded-lg object-cover">
-            </div>
-            <div class="space-y-4">
-                <h1 id="viewProductTitle" class="text-3xl font-bold">Product Title</h1>
-                <p id="viewProductPrice" class="text-2xl text-orange-500 font-semibold">PKR 0.00</p>
-                <p id="viewProductDesc" class="text-gray-400">Detailed product description goes here...</p>
+            <!-- ADD NEW PRODUCT FORM -->
+            <div class="bg-slate-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2.5 bg-orange-500/10 rounded-lg text-orange-500 text-lg"><i class="fa-solid fa-square-plus"></i></div>
+                    <h2 class="text-xl font-bold text-white">Add New Listing</h2>
+                </div>
                 
-                <!-- Buttons -->
-                <div class="flex gap-4">
-                    <button class="flex-1 bg-slate-800 hover:bg-slate-700 border border-gray-600 p-3 rounded font-bold">Add to Cart</button>
-                    <button class="flex-1 bg-orange-500 hover:bg-orange-600 p-3 rounded font-bold text-center">Buy Now</button>
+                <!-- Listing Policy Notification Block -->
+                <div class="bg-orange-500/10 border border-orange-500/30 text-orange-400 p-4 rounded-xl text-sm mb-5 flex gap-3 items-start">
+                    <i class="fa-solid fa-circle-exclamation text-base mt-0.5 flex-shrink-0"></i>
+                    <div>
+                        <strong class="font-semibold block mb-0.5">Listing Policy Notice:</strong> 
+                        Kindly send a flat fee of <span class="text-white font-bold underline">50 PKR</span> to <span class="text-white font-bold bg-slate-800 px-1.5 py-0.5 rounded border border-gray-700">03113841402</span> via Easypaisa to list your product. Enter your 11-digit Receipt/Transaction ID in the form below.
+                    </div>
                 </div>
 
-                <!-- Seller Badge / Details -->
-                <div class="p-4 bg-slate-800 rounded-lg border border-gray-700 mt-4">
-                    <h3 class="text-orange-400 font-bold mb-1"><i class="fa-solid fa-store mr-2"></i>Seller Information</h3>
-                    <p class="text-sm"><strong>Shop Name:</strong> <span id="viewSellerName">Tahir Store</span></p>
-                    <p class="text-sm"><strong>Location:</strong> <span id="viewSellerAddress">Mirpur Khas, Sindh</span></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Reviews & Comments Section -->
-        <div class="mt-10 border-t border-gray-800 pt-6">
-            <h3 class="text-xl font-bold mb-4">Reviews & Comments</h3>
-            
-            <!-- Comment Box Input -->
-            <div class="bg-slate-800 p-3 rounded-lg border border-gray-700 flex items-end gap-3">
-                <textarea id="commentText" placeholder="Write a review or comment..." class="flex-1 bg-transparent resize-none border-none focus:outline-none text-white text-sm" rows="2"></textarea>
-                
-                <div class="flex items-center gap-2">
-                    <!-- Pin Icon for Gallery/Media -->
-                    <label for="mediaUpload" class="cursor-pointer text-gray-400 hover:text-orange-500 p-2 transition">
-                        <i class="fa-solid fa-paperclip text-lg"></i>
-                    </label>
-                    <input type="file" id="mediaUpload" accept="image/*,video/*" class="hidden">
+                <form id="addProductForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="pTitle" placeholder="Product Name / Title" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                        <input type="number" id="pPrice" placeholder="Selling Price (PKR)" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="pImage" placeholder="Image URL Link" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                        <input type="text" id="pCategory" placeholder="Product Category (e.g., Watches)" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                    </div>
+                    <textarea id="pDesc" placeholder="Full Product Specifications & Description..." class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm h-24 resize-none" required></textarea>
                     
-                    <button id="submitComment" class="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-sm font-bold">Post</button>
+                    <div class="border-t border-gray-800 pt-4 mt-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3"><i class="fa-solid fa-address-card mr-1 text-orange-500"></i> Seller & Verification Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="sName" placeholder="Your Vendor/Shop Name" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                            <!-- Seller Email is open and configurable, not locked -->
+                            <input type="email" id="sEmail" placeholder="Your Active Notification Email" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <input type="tel" id="sPhone" placeholder="Your Mobile Number" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                            <input type="text" id="sAddress" placeholder="Physical Shop / Business Address" class="w-full p-3 rounded-xl bg-slate-800/60 border border-gray-700 focus:border-orange-500 outline-none text-white text-sm" required>
+                        </div>
+                        <div class="mt-4 bg-slate-950 p-3.5 rounded-xl border border-gray-800">
+                            <label class="block text-xs text-orange-400 font-semibold mb-1.5 uppercase">Easypaisa Verification ID</label>
+                            <input type="text" id="epReceipt" placeholder="Enter the 11-digit Easypaisa TRX / Receipt ID" class="w-full p-3 rounded-lg bg-slate-900 border border-gray-700 text-white text-sm focus:border-orange-500 outline-none font-mono" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white p-3.5 rounded-xl font-bold transition shadow-lg shadow-orange-500/20 text-sm mt-2">Submit Request to Admin</button>
+                </form>
+            </div>
+
+            <!-- PRODUCT DISPLAY DESIGN CARD EXAMPLE -->
+            <div class="bg-slate-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <img id="viewProductImage" src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500" class="w-full h-64 rounded-xl object-cover border border-gray-800" alt="Product">
+                    </div>
+                    <div class="flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <span class="text-xs font-bold uppercase tracking-widest text-orange-500 bg-orange-500/10 px-2.5 py-1 rounded-full">Gadgets</span>
+                            <h1 id="viewProductTitle" class="text-2xl font-bold text-white">Minimalist Smart Watch</h1>
+                            <p id="viewProductPrice" class="text-xl text-orange-400 font-black">PKR 4,999</p>
+                            <p id="viewProductDesc" class="text-gray-400 text-sm leading-relaxed">High-definition sleek AMOLED display smart watch with intelligent biometric heart tracking sensors and 7-day backup capacity battery life.</p>
+                            
+                            <!-- Seller Details Metadata -->
+                            <div class="p-3 bg-slate-950 rounded-xl border border-gray-800 text-xs text-gray-400 space-y-1 mt-2">
+                                <p><strong class="text-gray-300"><i class="fa-solid fa-shop text-orange-500 mr-1.5"></i> Vendor:</strong> <span id="viewSellerName" class="text-white">MT Official Premium Hub</span></p>
+                                <p><strong class="text-gray-300"><i class="fa-solid fa-location-dot text-orange-500 mr-2"></i> Address:</strong> <span id="viewSellerAddress" class="text-white">Suite 404, Main Commercial Boulevard, Sindh</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Buy & Cart Active Action Buttons -->
+                        <div class="flex gap-3 mt-4">
+                            <button class="flex-1 bg-slate-800 hover:bg-slate-700 text-gray-200 py-3 px-4 rounded-xl text-sm font-bold border border-gray-700 transition"><i class="fa-solid fa-cart-plus mr-2"></i>Add to Cart</button>
+                            <button class="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white py-3 px-4 rounded-xl text-sm font-bold transition shadow-lg shadow-orange-500/10"><i class="fa-solid fa-bolt mr-2"></i>Buy Now</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REVIEWS & INTERACTIVE COMMENT MODULE -->
+                <div class="mt-8 border-t border-gray-800 pt-6">
+                    <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4"><i class="fa-solid fa-comments text-orange-500 mr-2"></i>Reviews & Customer Feedback</h3>
+                    
+                    <div class="bg-slate-950 p-2.5 rounded-xl border border-gray-800 flex items-end gap-3">
+                        <textarea id="commentText" placeholder="Write a verified review or public comment..." class="flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-500 resize-none outline-none p-2 h-11" rows="1"></textarea>
+                        
+                        <div class="flex items-center gap-1">
+                            <!-- Paperclip Pin Attachment Button for Local Storage Gallery Selection -->
+                            <label for="commentMedia" class="cursor-pointer text-gray-400 hover:text-orange-500 p-2.5 rounded-lg hover:bg-slate-900 transition" title="Attach Photos or Videos">
+                                <i class="fa-solid fa-paperclip text-base"></i>
+                            </label>
+                            <input type="file" id="commentMedia" accept="image/*,video/*" class="hidden" multiple>
+                            
+                            <button class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition">Post</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <!-- Dummy Comments Container -->
-            <div class="mt-4 space-y-3" id="commentsContainer">
-                <div class="bg-slate-800/50 p-3 rounded text-sm">
-                    <p class="font-semibold text-orange-400">Ali Khan <span class="text-xs text-gray-500 font-normal">Just now</span></p>
-                    <p class="text-gray-300 mt-1">Excellent quality watch! Highly recommended.</p>
+        </div>
+
+        <!-- COLUMN 3: SELECTED CART CHECKOUT COMPONENT -->
+        <div class="lg:col-span-1">
+            <div class="bg-slate-900 border border-gray-800 rounded-2xl p-5 shadow-xl sticky top-24">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-md font-bold text-white flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-orange-500"></i>Your Checkout Cart</h3>
+                    <span class="text-xs text-gray-400">Select items to buy</span>
+                </div>
+
+                <!-- Dynamic Cart Items Wrapper -->
+                <div id="cartItemsContainer" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    
+                    <!-- Dummy Product Row 1 (With Active Filter Checkbox) -->
+                    <div class="flex items-center gap-3 bg-slate-950 p-3 rounded-xl border border-gray-800/80">
+                        <input type="checkbox" data-id="demo_id_1" data-price="4999" class="cart-item-select w-4 h-4 rounded accent-orange-500 cursor-pointer" checked>
+                        <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100" class="w-11 h-11 rounded-lg object-cover border border-gray-800">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-xs font-bold text-gray-200 truncate">Minimalist Smart Watch</h4>
+                            <p class="text-xs text-orange-400 font-medium mt-0.5">PKR 4,999</p>
+                        </div>
+                    </div>
+
+                    <!-- Dummy Product Row 2 (Unchecked by default, wont pass to checkout) -->
+                    <div class="flex items-center gap-3 bg-slate-950 p-3 rounded-xl border border-gray-800/80">
+                        <input type="checkbox" data-id="demo_id_2" data-price="2500" class="cart-item-select w-4 h-4 rounded accent-orange-500 cursor-pointer">
+                        <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100" class="w-11 h-11 rounded-lg object-cover border border-gray-800">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-xs font-bold text-gray-200 truncate">Wireless Studio Headphones</h4>
+                            <p class="text-xs text-orange-400 font-medium mt-0.5">PKR 2,500</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="mt-5 pt-4 border-t border-gray-800 space-y-3">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-400">Selected Total Amount:</span>
+                        <span id="cartTotalDisplay" class="text-base font-black text-orange-500">PKR 4,999</span>
+                    </div>
+                    <button id="checkoutBtn" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white py-3 rounded-xl font-bold text-sm transition shadow-md shadow-orange-500/10">Proceed to Checkout</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 3. CART PAGE WITH PRODUCT SELECTION CHECKBOX -->
-    <div class="max-w-2xl mx-auto my-10 p-6 bg-slate-900 rounded-lg">
-        <h2 class="text-2xl font-bold text-orange-500 mb-4">Your Shopping Cart</h2>
-        
-        <div id="cartItemsContainer" class="space-y-4">
-            <!-- Sample Cart Item with Checkbox -->
-            <div class="flex items-center gap-4 bg-slate-800 p-3 rounded-lg border border-gray-700">
-                <!-- Checkbox for Selection -->
-                <input type="checkbox" class="cart-item-checkbox w-5 h-5 accent-orange-500 cursor-pointer" checked>
-                <img src="https://via.placeholder.com/60" class="w-12 h-12 rounded object-cover">
-                <div class="flex-1">
-                    <h4 class="font-bold">Sample Product Name</h4>
-                    <p class="text-sm text-orange-400">PKR 1,200</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center">
-            <div>
-                <p class="text-xs text-gray-400">Only selected items will be processed</p>
-                <p class="text-lg font-bold">Total: <span class="text-orange-500" id="cartTotal">PKR 1,200</span></p>
-            </div>
-            <button id="checkoutBtn" class="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-lg font-bold">Checkout Selected</button>
-        </div>
-    </div>
-
-    <!-- Script Logic For Frontend Checkout Filter -->
+    <!-- MAIN FUNCTIONAL SCRIPT INTERACTION LOGIC -->
     <script>
-        document.getElementById('checkoutBtn').addEventListener('click', () => {
-            const checkedItems = [];
-            const checkboxes = document.querySelectorAll('.cart-item-checkbox');
+        // Data Store Mock Array
+        let activeCartList = [
+            { _id: "demo_id_1", title: "Minimalist Smart Watch", price: 4999 },
+            { _id: "demo_id_2", title: "Wireless Studio Headphones", price: 2500 }
+        ];
+
+        // 1. Live Checked Amount Calculation Filter
+        function updateSelectedPriceCounter() {
+            let totalSum = 0;
+            let counter = 0;
+            document.querySelectorAll('.cart-item-select').forEach(box => {
+                if(box.checked) {
+                    totalSum += parseInt(box.getAttribute('data-price'));
+                    counter++;
+                }
+            });
+            document.getElementById('cartTotalDisplay').innerText = `PKR ${totalSum.toLocaleString()}`;
+            document.getElementById('cartCountBadge').innerText = counter;
+        }
+
+        // Attach Change Event Listeners to checkboxes
+        document.querySelectorAll('.cart-item-select').forEach(box => {
+            box.addEventListener('change', updateSelectedPriceCounter);
+        });
+
+        // 2. Checkout Event Filter Action
+        document.getElementById('checkoutBtn').addEventListener('click', async () => {
+            const finalProcessedPayload = [];
             
-            checkboxes.forEach((cb, index) => {
-                if (cb.checked) {
-                    // Yahan aap apne cart logic array se data fetch karenge
-                    checkedItems.push({
-                        id: "product_id_here",
-                        title: "Product Title",
-                        price: 1200
-                    });
+            document.querySelectorAll('.cart-item-select').forEach(checkbox => {
+                if (checkbox.checked) {
+                    const targetId = checkbox.getAttribute('data-id');
+                    const targetProduct = activeCartList.find(p => p._id === targetId);
+                    if (targetProduct) {
+                        finalProcessedPayload.push({
+                            id: targetProduct._id,
+                            title: targetProduct.title,
+                            price: targetProduct.price,
+                            quantity: 1
+                        });
+                    }
                 }
             });
 
-            if(checkedItems.length === 0) {
-                alert("Please select at least one product to checkout!");
+            if(finalProcessedPayload.length === 0) {
+                alert("🔴 Cart Error: Please check/select at least one product line item to execute checkout workflow!");
                 return;
             }
+
+            // Dummy Buyer Payload structure for endpoint submission
+            const buyerDetails = {
+                name: "Test Customer",
+                phone: "03001234567",
+                address: "House 12, Street 3, Mirpur Khas, Sindh"
+            };
+
+            console.log("Submitting Selective Checkout Payload:", { items: finalProcessedPayload, buyerDetails });
             
-            console.log("Proceeding to checkout with:", checkedItems);
-            // Yahan checkout API call trigger hogi checkedItems data ke sath.
+            try {
+                const response = await fetch('/api/orders/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: finalProcessedPayload, buyerDetails })
+                });
+                const responseData = await response.json();
+                if(responseData.success) {
+                    alert("✓ Order Placed Successfully! Router emails are transmitted.");
+                }
+            } catch (err) {
+                console.error("Transmission Error:", err);
+            }
         });
+
+        // 3. New Product Application Submit Handler
+        document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                title: document.getElementById('pTitle').value,
+                price: parseFloat(document.getElementById('pPrice').value),
+                image: document.getElementById('pImage').value,
+                category: document.getElementById('pCategory').value,
+                description: document.getElementById('pDesc').value,
+                sellerName: document.getElementById('sName').value,
+                sellerEmail: document.getElementById('sEmail').value,
+                sellerPhone: document.getElementById('sPhone').value,
+                shopAddress: document.getElementById('sAddress').value,
+                easypaisaReceipt: document.getElementById('epReceipt').value
+            };
+
+            try {
+                const res = await fetch('/api/products/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert("✓ Submitted! Request routing mail transmitted to Admin Inbox for validation control.");
+                    document.getElementById('addProductForm').reset();
+                }
+            } catch (error) {
+                alert("🔴 Server interaction error encountered.");
+            }
+        });
+
+        // Initialize display configuration on mount
+        updateSelectedPriceCounter();
     </script>
 </body>
 </html>
