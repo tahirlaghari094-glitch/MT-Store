@@ -70,35 +70,6 @@
             <div id="product-detail-content" class="bg-slate-900/30 border border-gray-900 rounded-3xl p-4 space-y-6">
                 <!-- Dynamic detail rendered here -->
             </div>
-
-            <!-- REQUIREMENT: Reviews and Comment Box Architecture -->
-            <div id="product-reviews-section" class="bg-slate-900/30 border border-gray-900 rounded-3xl p-4 space-y-4">
-                <h3 class="text-sm font-black text-white uppercase tracking-wider"><i class="fa-solid fa-comments text-orange-400 mr-1"></i> Customer Reviews & Comments</h3>
-                
-                <!-- Comments Render Stack -->
-                <div id="comments-container" class="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
-                    <!-- Comments render dynamic template maps here -->
-                </div>
-
-                <!-- Input Field Framework -->
-                <div class="space-y-2 pt-2 border-t border-gray-900">
-                    <div class="flex items-center gap-2 bg-slate-950 border border-gray-900 rounded-xl px-3 py-2">
-                        <textarea id="c-text" placeholder="Write an item review..." rows="1" class="flex-1 bg-transparent text-xs text-gray-200 outline-none resize-none no-scrollbar"></textarea>
-                        
-                        <!-- REQUIREMENT: Pin Icon triggering Device System Gallery Storage -->
-                        <label class="cursor-pointer text-gray-400 hover:text-orange-400 transition p-1">
-                            <i class="fa-solid fa-paperclip text-sm"></i>
-                            <input type="file" id="c-image-file" accept="image/*" class="hidden" onchange="previewCommentImage(this)">
-                        </label>
-                    </div>
-                    <!-- Small image attachment preview placeholder -->
-                    <div id="comment-img-preview" class="hidden relative w-16 h-16 rounded-xl overflow-hidden border border-gray-850 bg-slate-950">
-                        <img id="comment-preview-src" src="" class="w-full h-full object-cover">
-                        <button onclick="clearCommentImage()" class="absolute top-0.5 right-0.5 bg-black/60 w-4 h-4 rounded-full text-[8px] flex items-center justify-center text-rose-400"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                    <button onclick="submitProductComment()" class="w-full bg-orange-500 text-slate-950 font-black py-2.5 rounded-xl text-xs uppercase tracking-wide transition">Post Secure Review</button>
-                </div>
-            </div>
         </div>
 
         <!-- 3. SELLER UPLOAD DASHBOARD VIEW -->
@@ -134,9 +105,8 @@
                         <textarea id="p-description" rows="3" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition"></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <!-- Upgraded to multiple for requirements handling -->
                         <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
-                            <span id="lbl-images" class="text-xs text-gray-400 block">Select Product Images</span>
+                            <span id="lbl-images" class="text-xs text-gray-400 block">Select 3 Product Images</span>
                             <input type="file" id="p-image-file" multiple accept="image/*" class="hidden" onchange="previewMedia(this, 'lbl-images')">
                         </label>
                         <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
@@ -217,6 +187,7 @@
         <div id="messages-view" class="tab-view space-y-6">
             <h2 class="text-xl font-black">Support Channels</h2>
             
+            <!-- 🛠️ FIXED: Central Command Support box strictly isolated only to Messages Page -->
             <div id="central-command-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4" style="box-shadow: none !important; border: 1px solid #1e293b !important;">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center font-black text-xs">MT</div>
@@ -264,6 +235,7 @@
         </div>
     </nav>
 
+    <!-- App Engine Script Logic Initiation Mapping -->
     <script src="/main.js"></script>
 </body>
 </html>
