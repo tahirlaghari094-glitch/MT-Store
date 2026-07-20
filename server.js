@@ -56,7 +56,7 @@ const ProductSchema = new mongoose.Schema({
     price: Number,
     description: String,
     category: String,
-    imageUrls: [String], // 🛠️ CHANGED: Ek se zyada images store karne ke liye array structure
+    imageUrl: String,
     sellerEmail: { type: String, lowercase: true },
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
@@ -77,16 +77,6 @@ const OrderSchema = new mongoose.Schema({
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
-
-// 🛠️ NEW: Review Schema Definition for Pin Comment Box
-const ReviewSchema = new mongoose.Schema({
-    productId: { type: String, required: true },
-    username: String,
-    rating: { type: Number, default: 5 },
-    comment: String,
-    createdAt: { type: String, default: () => new Date().toISOString() }
-});
-const Review = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
 
 // STATIC FILES ROUTER MIDDLEWARE
 const rootPath = process.cwd();
@@ -141,18 +131,10 @@ app.get('/api/orders/user/:email', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, imagesBase64, sellerEmail } = req.body; // 🛠️ Expecting imagesBase64 as an Array
+    const { title, price, description, category, imageBase64, sellerEmail } = req.body;
     try {
         const productId = Date.now().toString();
-        const newProduct = new Product({ 
-            id: productId, 
-            title, 
-            price: parseFloat(price), 
-            description, 
-            category, 
-            imageUrls: imagesBase64 || [], 
-            sellerEmail 
-        });
+        const newProduct = new Product({ id: productId, title, price: parseFloat(price), description, category, imageUrl: imageBase64, sellerEmail });
         await newProduct.save();
 
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
@@ -174,6 +156,7 @@ app.get('/api/products/approve/:id', async (req, res) => {
     } catch (e) { res.send("Error"); }
 });
 
+// 🚨 FIXED: Cancellation logic dispatches warning emails to BOTH Admin & Linked Seller
 app.post('/api/orders/cancel', async (req, res) => {
     const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
     try {
@@ -188,8 +171,10 @@ app.post('/api/orders/cancel', async (req, res) => {
             </div>
         `;
 
+        // Route alert to Admin
         await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
         
+        // Route alert dynamically to Seller
         if (sellerEmail && sellerEmail.trim() !== '') {
             await sendHtmlEmail(sellerEmail.trim(), `Cancellation Notice: Order ${orderId}`, cancellationHtml);
         }
@@ -212,24 +197,6 @@ app.post('/api/orders', async (req, res) => {
         }
         res.json({ message: "Dispatched order pipelines." });
     } catch (error) { res.status(500).json({ error: "Error" }); }
-});
-
-// 🛠️ NEW: Get Reviews for specific Product
-app.get('/api/reviews/:productId', async (req, res) => {
-    try {
-        const reviews = await Review.find({ productId: req.params.productId }).sort({ createdAt: -1 });
-        res.json(reviews);
-    } catch (e) { res.status(500).json({ error: "Error loading reviews" }); }
-});
-
-// 🛠️ NEW: Post a Review Comment
-app.post('/api/reviews', async (req, res) => {
-    const { productId, username, comment, rating } = req.body;
-    try {
-        const newReview = new Review({ productId, username, comment, rating: parseInt(rating) });
-        await newReview.save();
-        res.json({ success: true, review: newReview });
-    } catch (e) { res.status(500).json({ error: "Error posting review" }); }
 });
 
 app.get(/^\/(?!api).*/, (req, res) => { res.sendFile(path.join(rootPath, 'index.html')); });
