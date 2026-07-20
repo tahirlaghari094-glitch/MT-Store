@@ -50,30 +50,18 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
-// REQUIREMENT UPDATES: Dynamic Image Array Integration tracking framework
 const ProductSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     title: String,
     price: Number,
     description: String,
     category: String,
-    imageUrl: String, 
-    imageUrls: [String], // Array storage system to hold multi-image uploads safely
+    imageUrl: String,
     sellerEmail: { type: String, lowercase: true },
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
 const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
-
-// REQUIREMENT: Feedback Comments logs framework model declaration
-const CommentSchema = new mongoose.Schema({
-    productId: String,
-    userHandle: String,
-    text: String,
-    commentImage: String, // Pin icon file storage base64 attachment field
-    createdAt: { type: Date, default: Date.now }
-});
-const Comment = mongoose.models.Comment || mongoose.model('Comment', CommentSchema);
 
 const OrderSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -130,23 +118,6 @@ app.delete('/api/products/delete/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
-// REQUIREMENT: Comments Fetching and Processing Endpoints
-app.get('/api/products/:productId/comments', async (req, res) => {
-    try {
-        const list = await Comment.find({ productId: req.params.productId }).sort({ createdAt: -1 });
-        res.json(list);
-    } catch(e) { res.status(500).json({ error: "Fetch pipeline failure" }); }
-});
-
-app.post('/api/products/:productId/comments', async (req, res) => {
-    const { userHandle, text, commentImage } = req.body;
-    try {
-        const item = new Comment({ productId: req.params.productId, userHandle, text, commentImage });
-        await item.save();
-        res.status(201).json({ success: true });
-    } catch(e) { res.status(500).json({ error: "Submit loop failure" }); }
-});
-
 app.get('/api/orders/user/:email', async (req, res) => {
     try {
         const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
@@ -160,21 +131,10 @@ app.get('/api/orders/user/:email', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, imageUrls, sellerEmail } = req.body;
+    const { title, price, description, category, imageBase64, sellerEmail } = req.body;
     try {
         const productId = Date.now().toString();
-        const primaryImg = imageUrls && imageUrls.length > 0 ? imageUrls[0] : "";
-        
-        const newProduct = new Product({ 
-            id: productId, 
-            title, 
-            price: parseFloat(price), 
-            description, 
-            category, 
-            imageUrl: primaryImg, 
-            imageUrls: imageUrls || [], 
-            sellerEmail 
-        });
+        const newProduct = new Product({ id: productId, title, price: parseFloat(price), description, category, imageUrl: imageBase64, sellerEmail });
         await newProduct.save();
 
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
@@ -196,6 +156,7 @@ app.get('/api/products/approve/:id', async (req, res) => {
     } catch (e) { res.send("Error"); }
 });
 
+// 🚨 FIXED: Cancellation logic dispatches warning emails to BOTH Admin & Linked Seller
 app.post('/api/orders/cancel', async (req, res) => {
     const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
     try {
@@ -210,8 +171,10 @@ app.post('/api/orders/cancel', async (req, res) => {
             </div>
         `;
 
+        // Route alert to Admin
         await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
         
+        // Route alert dynamically to Seller
         if (sellerEmail && sellerEmail.trim() !== '') {
             await sendHtmlEmail(sellerEmail.trim(), `Cancellation Notice: Order ${orderId}`, cancellationHtml);
         }
