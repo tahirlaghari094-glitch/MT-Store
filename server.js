@@ -56,8 +56,10 @@ const ProductSchema = new mongoose.Schema({
     price: Number,
     description: String,
     category: String,
-    imageUrl: String,
+    imageUrl: String, // Base64 or array string
     sellerEmail: { type: String, lowercase: true },
+    sellerPhone: String, // 8. Number field added
+    easypaisaTxnId: String, // 9. EasyPaisa Receipt ID field added
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -90,11 +92,24 @@ app.post('/api/users/login', async (req, res) => {
     try {
         let user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
-            user = new User({ email: email.toLowerCase(), username: email.split('@')[0] });
+            user = new User({ email: email.toLowerCase(), username: email.split('@')[0], profileImage: '' });
             await user.save();
         }
         res.json({ success: true, user });
     } catch (e) { res.status(500).json({ error: "Error" }); }
+});
+
+// 6. Profile Edit Endpoint Added
+app.post('/api/users/update-profile', async (req, res) => {
+    const { email, username, profileImage } = req.body;
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(404).json({ error: "User not found" });
+        if (username) user.username = username;
+        if (profileImage) user.profileImage = profileImage;
+        await user.save();
+        res.json({ success: true, user });
+    } catch (e) { res.status(500).json({ error: "Error updating profile" }); }
 });
 
 app.get('/api/products', async (req, res) => {
@@ -131,14 +146,25 @@ app.get('/api/orders/user/:email', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, imageBase64, sellerEmail } = req.body;
+    // 8 & 9. Form elements handled
+    const { title, price, description, category, imageBase64, sellerEmail, sellerPhone, easypaisaTxnId } = req.body;
     try {
         const productId = Date.now().toString();
-        const newProduct = new Product({ id: productId, title, price: parseFloat(price), description, category, imageUrl: imageBase64, sellerEmail });
+        const newProduct = new Product({ 
+            id: productId, 
+            title, 
+            price: parseFloat(price), 
+            description, 
+            category, 
+            imageUrl: imageBase64, 
+            sellerEmail,
+            sellerPhone,
+            easypaisaTxnId
+        });
         await newProduct.save();
 
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
-        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor: ${sellerEmail}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
+        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor Email: ${sellerEmail}</p><p>Vendor Phone: ${sellerPhone}</p><p>EasyPaisa Txn ID: ${easypaisaTxnId}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
         await sendHtmlEmail(ADMIN_EMAIL, `Approve ${title}`, emailHtml);
 
         res.status(201).json({ message: "Dispatched pipeline." });
@@ -174,7 +200,7 @@ app.post('/api/orders/cancel', async (req, res) => {
         // Route alert to Admin
         await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
         
-        // Route alert dynamically to Seller
+        // 7. Route alert dynamically to Seller
         if (sellerEmail && sellerEmail.trim() !== '') {
             await sendHtmlEmail(sellerEmail.trim(), `Cancellation Notice: Order ${orderId}`, cancellationHtml);
         }
@@ -191,9 +217,15 @@ app.post('/api/orders', async (req, res) => {
             const newOrder = new Order({ id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity, buyerEmail, buyerName, buyerPhone, buyerAddress });
             await newOrder.save();
 
-            const orderHtml = `<h2>New Order Created: ${orderId}</h2><p>Title: ${item.title}</p>`;
+            const orderHtml = `<h2>New Order Created: ${orderId}</h2><p>Title: ${item.title}</p><p>Quantity: ${item.quantity}</p>`;
             await sendHtmlEmail(buyerEmail, `Order Placed`, orderHtml);
             await sendHtmlEmail(ADMIN_EMAIL, `New Platform Order Request`, orderHtml);
+            
+            // 8. Dynamic Notification: order received email routed to Product Seller
+            const productInfo = await Product.findOne({ id: item.id });
+            if (productInfo && productInfo.sellerEmail) {
+                await sendHtmlEmail(productInfo.sellerEmail, `New Order Received: ${orderId}`, `<h2>You received an order for "${item.title}"</h2><p>Quantity: ${item.quantity}</p>`);
+            }
         }
         res.json({ message: "Dispatched order pipelines." });
     } catch (error) { res.status(500).json({ error: "Error" }); }
