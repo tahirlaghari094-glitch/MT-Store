@@ -22,6 +22,7 @@ function toggleDropdown() {
     document.getElementById('accountDropdown').classList.toggle('hidden');
 }
 
+// 🛠️ FIXED: Become a Seller par click karne se direct Account sub tab activate ho jayega
 function setAccountType(type) {
     currentAccountType = type;
     toggleDropdown();
@@ -38,7 +39,7 @@ function setAccountType(type) {
         if (currentUser && document.getElementById('p-email')) {
             document.getElementById('p-email').value = currentUser.email;
         }
-        switchTab('account'); 
+        switchTab('account'); // Redirect to profile accounts architecture hub
     } else {
         showNotification("Switched to Common Buyer Account.");
         switchTab('home');
@@ -102,11 +103,9 @@ async function loadProducts() {
             return;
         }
         currentProducts.forEach(product => {
-            // Display first image from array as cover fallback
-            const coverImage = product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls[0] : (product.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100');
             grid.innerHTML += `
                 <div class="bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
-                    <img src="${coverImage}" alt="${product.title}" class="w-full h-36 object-cover">
+                    <img src="${product.imageUrl}" alt="${product.title}" class="w-full h-36 object-cover">
                     <div class="p-3">
                         <h3 class="font-extrabold text-xs truncate">${product.title}</h3>
                         <div class="flex items-center justify-between mt-2">
@@ -119,65 +118,26 @@ async function loadProducts() {
     } catch (e) {}
 }
 
-// 🛠️ UPDATED: Render Gallery Images, Buy Now Flow and Comment System Frame
-async function viewDetails(productId) {
+function viewDetails(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
     const container = document.getElementById('product-detail-content');
     if (!container) return;
 
-    const images = p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls : [p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400'];
-    
-    let imagesHtml = `
-        <div class="flex flex-col items-center w-full gap-3 bg-slate-950/40 rounded-2xl p-4">
-            <img id="main-product-img" src="${images[0]}" class="object-contain max-h-[220px] rounded-xl transition-all duration-200">
-            <div class="flex gap-2 overflow-x-auto w-full py-1 justify-center">
-    `;
-    images.forEach((imgUrl) => {
-        imagesHtml += `<img src="${imgUrl}" onclick="document.getElementById('main-product-img').src='${imgUrl}'" class="w-12 h-12 rounded-lg object-cover cursor-pointer border border-gray-800 hover:border-orange-500 transition shadow-md">`;
-    });
-    imagesHtml += `</div></div>`;
-
     container.innerHTML = `
-        ${imagesHtml}
+        <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden">
+            <img src="${p.imageUrl}" class="object-contain max-h-[200px] rounded-xl">
+        </div>
         <div class="space-y-4">
             <h2 class="text-xl font-black">${p.title}</h2>
             <p class="text-md font-bold text-orange-400">PKR ${p.price}</p>
             <p class="text-gray-300 text-xs leading-relaxed">${p.description || 'Verified Premium Product.'}</p>
-            
-            <div class="flex gap-2 pt-2">
-                <button onclick="addToCart('${p.id}')" class="flex-1 bg-slate-800 border border-gray-700 text-white font-bold py-3 rounded-xl transition text-xs">Add to Cart</button>
-                <button onclick="buyNowDirectly('${p.id}')" class="flex-1 bg-orange-500 hover:bg-orange-600 text-slate-950 font-black py-3 rounded-xl transition text-xs shadow-lg">Buy Now</button>
-            </div>
-            
-            <hr class="border-gray-900 my-4">
-
-            <div class="space-y-3">
-                <h3 class="text-sm font-black text-white"><i class="fa-solid fa-comments text-orange-400 mr-1"></i> Reviews & Comments</h3>
-                
-                <div class="bg-slate-900/60 border border-gray-850 p-3 rounded-xl space-y-2">
-                    <input type="text" id="rev-username" placeholder="Your Name" class="w-full bg-slate-950 text-xs text-white p-2.5 rounded-lg border border-gray-800 focus:outline-none focus:border-orange-500" value="${currentUser ? currentUser.username || currentUser.email.split('@')[0] : ''}">
-                    <textarea id="rev-comment" placeholder="Write your review here..." rows="2" class="w-full bg-slate-950 text-xs text-white p-2.5 rounded-lg border border-gray-800 focus:outline-none focus:border-orange-500 resize-none"></textarea>
-                    <div class="flex justify-between items-center">
-                        <select id="rev-rating" class="bg-slate-950 text-xs text-orange-400 border border-gray-800 rounded-lg p-1.5 focus:outline-none">
-                            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
-                            <option value="4">⭐⭐⭐⭐ (4)</option>
-                            <option value="3">⭐⭐⭐ (3)</option>
-                            <option value="2">⭐⭐ (2)</option>
-                            <option value="1">⭐ (1)</option>
-                        </select>
-                        <button onclick="submitProductReview('${p.id}')" class="bg-orange-500 text-slate-950 text-[10px] font-black px-4 py-1.5 rounded-lg transition">Pin Comment</button>
-                    </div>
-                </div>
-
-                <div id="reviews-feed-container" class="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                    <p class="text-[11px] text-gray-500 text-center py-2">Loading reviews...</p>
-                </div>
+            <div class="space-y-2 pt-2">
+                <button onclick="addToCart('${p.id}')" class="w-full bg-slate-800 border border-gray-700 text-white font-bold py-3 rounded-xl transition text-xs">Add to Cart</button>
             </div>
         </div>
     `;
     switchTab('detail');
-    loadProductReviews(p.id);
 }
 
 function addToCart(productId) {
@@ -185,64 +145,6 @@ function addToCart(productId) {
     if(!p) return;
     cart.push({ ...p, quantity: 1 });
     showNotification("Item added to basket checkout flow.");
-}
-
-// 🛠️ NEW: Buy Now Instant Action Routing
-function buyNowDirectly(productId) {
-    const p = currentProducts.find(item => item.id === productId);
-    if (!p) return;
-    cart = [{ ...p, quantity: 1 }];
-    switchTab('cart');
-    showNotification("Proceeding directly to checkout.");
-}
-
-// 🛠️ NEW: Load Product Comments Data Pipeline
-async function loadProductReviews(productId) {
-    const container = document.getElementById('reviews-feed-container');
-    if (!container) return;
-    try {
-        const res = await fetch(`/api/reviews/${productId}`);
-        const reviews = await res.json();
-        container.innerHTML = '';
-        if (reviews.length === 0) {
-            container.innerHTML = `<p class="text-[10px] text-gray-500 text-center py-2">No feedback pinned yet. Be the first!</p>`;
-            return;
-        }
-        reviews.forEach(r => {
-            let stars = '⭐'.repeat(r.rating);
-            container.innerHTML += `
-                <div class="bg-slate-950 border border-gray-900 p-2.5 rounded-xl space-y-1">
-                    <div class="flex justify-between items-center">
-                        <span class="font-extrabold text-[10px] text-gray-200">${r.username || 'Anonymous'}</span>
-                        <span class="text-[8px]">${stars}</span>
-                    </div>
-                    <p class="text-[11px] text-gray-400 leading-tight">${r.comment}</p>
-                </div>
-            `;
-        });
-    } catch (e) { container.innerHTML = `<p class="text-[10px] text-rose-400 text-center">Error reading reviews pipeline.</p>`; }
-}
-
-// 🛠️ NEW: Submit Pin Review Action Action
-async function submitProductReview(productId) {
-    const username = document.getElementById('rev-username').value.trim();
-    const comment = document.getElementById('rev-comment').value.trim();
-    const rating = document.getElementById('rev-rating').value;
-
-    if (!username || !comment) return showNotification("Please insert both your name and feedback comment.", "error");
-
-    try {
-        const res = await fetch('/api/reviews', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId, username, comment, rating })
-        });
-        if (res.ok) {
-            showNotification("Your review comment has been pinned live.");
-            document.getElementById('rev-comment').value = ''; 
-            loadProductReviews(productId); 
-        }
-    } catch(e) { showNotification("Failed to route comment.", "error"); }
 }
 
 function renderCart() {
@@ -290,6 +192,7 @@ async function processOrderCheckout() {
     } catch(e) {}
 }
 
+// 🛠️ FIXED: UI content structure changing seamlessly with "Add New Product" dynamic injector
 async function updateProfilePanel() {
     const authBox = document.getElementById('auth-box');
     const profilePanel = document.getElementById('profile-panel');
@@ -310,6 +213,7 @@ async function updateProfilePanel() {
     if (!orderContainer) return;
     orderContainer.innerHTML = '';
 
+    // SELLER CONTEXT PROFILE SETUP
     if (currentAccountType === 'seller') {
         if (headingTitle) {
             headingTitle.innerHTML = `
@@ -332,11 +236,10 @@ async function updateProfilePanel() {
                 return;
             }
             items.forEach(p => {
-                const cover = p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100';
                 orderContainer.innerHTML += `
                     <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center gap-2 mt-2">
                         <div class="min-w-0 flex-grow flex items-center gap-3">
-                            <img src="${cover}" class="w-10 h-10 rounded-xl object-cover border border-gray-800">
+                            <img src="${p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}" class="w-10 h-10 rounded-xl object-cover border border-gray-800">
                             <div class="min-w-0 flex-1">
                                 <h5 class="font-extrabold text-xs truncate text-white">${p.title}</h5>
                                 <p class="text-[10px] text-orange-400 font-bold">PKR ${p.price}</p>
@@ -351,6 +254,7 @@ async function updateProfilePanel() {
             });
         } catch(e) {}
     } else {
+        // BUYER ACCOUNT HISTORY SYNC 
         if (headingTitle) headingTitle.innerHTML = `<span class="font-extrabold text-xs text-white"><i class="fa-solid fa-basket-shopping text-orange-400 mr-1"></i> Your Placed Orders Summary</span>`;
         try {
             const res = await fetch(`/api/orders/user/${currentUser.email}`);
@@ -405,7 +309,6 @@ async function deleteProductItem(productId) {
     } catch(e) {}
 }
 
-// 🛠️ UPDATED: Multiple File Parser Injection Loop logic inside upload system
 async function handleProductUpload(event) {
     event.preventDefault();
     const title = document.getElementById('p-title').value;
@@ -414,26 +317,21 @@ async function handleProductUpload(event) {
     const category = document.getElementById('p-category').value;
     const imgInput = document.getElementById('p-image-file');
 
-    let imagesBase64Array = [];
-    
+    let base64Image = "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400";
     if (imgInput.files.length > 0) {
-        for (let file of imgInput.files) {
-            const reader = new FileReader();
-            let base64 = await new Promise((res) => {
-                reader.onload = (e) => res(e.target.result);
-                reader.readAsDataURL(file);
-            });
-            imagesBase64Array.push(base64);
-        }
-    } else {
-        imagesBase64Array.push("https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400");
+        const file = imgInput.files[0];
+        const reader = new FileReader();
+        base64Image = await new Promise((res) => {
+            reader.onload = (e) => res(e.target.result);
+            reader.readAsDataURL(file);
+        });
     }
 
     try {
         const res = await fetch('/api/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, price, description, category, imagesBase64: imagesBase64Array, sellerEmail: currentUser.email })
+            body: JSON.stringify({ title, price, description, category, imageBase64: base64Image, sellerEmail: currentUser.email })
         });
         if(res.ok) {
             showNotification("Product listing uploaded for admin review pipeline processing.");
