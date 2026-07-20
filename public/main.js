@@ -2,7 +2,6 @@ let currentProducts = [];
 let cart = [];
 let currentUser = null;
 let currentAccountType = 'common'; 
-let currentViewingProductId = null;
 
 function showNotification(message, type = 'success') {
     const toast = document.getElementById('toast-notification');
@@ -23,6 +22,7 @@ function toggleDropdown() {
     document.getElementById('accountDropdown').classList.toggle('hidden');
 }
 
+// 🛠️ FIXED: Become a Seller par click karne se direct Account sub tab activate ho jayega
 function setAccountType(type) {
     currentAccountType = type;
     toggleDropdown();
@@ -39,7 +39,7 @@ function setAccountType(type) {
         if (currentUser && document.getElementById('p-email')) {
             document.getElementById('p-email').value = currentUser.email;
         }
-        switchTab('account'); 
+        switchTab('account'); // Redirect to profile accounts architecture hub
     } else {
         showNotification("Switched to Common Buyer Account.");
         switchTab('home');
@@ -103,10 +103,9 @@ async function loadProducts() {
             return;
         }
         currentProducts.forEach(product => {
-            const displayImg = Array.isArray(product.imageUrls) ? product.imageUrls[0] : product.imageUrl;
             grid.innerHTML += `
                 <div class="bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
-                    <img src="${displayImg}" alt="${product.title}" class="w-full h-36 object-cover">
+                    <img src="${product.imageUrl}" alt="${product.title}" class="w-full h-36 object-cover">
                     <div class="p-3">
                         <h3 class="font-extrabold text-xs truncate">${product.title}</h3>
                         <div class="flex items-center justify-between mt-2">
@@ -119,74 +118,35 @@ async function loadProducts() {
     } catch (e) {}
 }
 
-// REQUIREMENT: Render all seller uploaded images instead of just one + Buy now architecture
 function viewDetails(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
-    currentViewingProductId = productId;
     const container = document.getElementById('product-detail-content');
     if (!container) return;
 
-    // Build dynamic array rendering system for images
-    let imagesMarkup = '';
-    if (Array.isArray(p.imageUrls) && p.imageUrls.length > 0) {
-        imagesMarkup = `
-            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 snap-x">
-                ${p.imageUrls.map(img => `<img src="${img}" class="object-contain max-h-[200px] rounded-xl snap-center shrink-0 min-w-full bg-slate-950/40 p-2">`).join('')}
-            </div>
-            <p class="text-[9px] text-gray-500 text-center tracking-wide">Swipe to see all product variant views &rarr;</p>
-        `;
-    } else {
-        imagesMarkup = `
-            <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden">
-                <img src="${p.imageUrl}" class="object-contain max-h-[200px] rounded-xl">
-            </div>
-        `;
-    }
-
     container.innerHTML = `
-        ${imagesMarkup}
+        <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden">
+            <img src="${p.imageUrl}" class="object-contain max-h-[200px] rounded-xl">
+        </div>
         <div class="space-y-4">
             <h2 class="text-xl font-black">${p.title}</h2>
             <p class="text-md font-bold text-orange-400">PKR ${p.price}</p>
             <p class="text-gray-300 text-xs leading-relaxed">${p.description || 'Verified Premium Product.'}</p>
-            
-            <!-- REQUIREMENT: Integrated Buy Now Direct Button beside Add To Cart -->
-            <div class="grid grid-cols-2 gap-2 pt-2">
+            <div class="space-y-2 pt-2">
                 <button onclick="addToCart('${p.id}')" class="w-full bg-slate-800 border border-gray-700 text-white font-bold py-3 rounded-xl transition text-xs">Add to Cart</button>
-                <button onclick="directBuyItem('${p.id}')" class="w-full bg-gradient-to-r from-orange-400 to-amber-500 text-slate-950 font-black py-3 rounded-xl transition text-xs shadow-lg uppercase tracking-wider">Buy Now</button>
             </div>
         </div>
     `;
     switchTab('detail');
-    loadProductComments(productId);
-}
-
-// REQUIREMENT: Immediate Checkout Routing Bypass
-function directBuyItem(productId) {
-    const p = currentProducts.find(item => item.id === productId);
-    if(!p) return;
-    
-    // Clear cart or keep existing, we append this direct item and check it by default
-    const existing = cart.find(item => item.id === productId);
-    if(!existing) {
-        cart.push({ ...p, quantity: 1, selected: true });
-    } else {
-        existing.selected = true; 
-    }
-    
-    switchTab('cart');
-    showNotification("Direct Purchase pipeline initialised.");
 }
 
 function addToCart(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if(!p) return;
-    cart.push({ ...p, quantity: 1, selected: true }); // Checked by default when added
+    cart.push({ ...p, quantity: 1 });
     showNotification("Item added to basket checkout flow.");
 }
 
-// REQUIREMENT: Cart item select/deselect option framework configuration updates
 function renderCart() {
     const list = document.getElementById('cart-items-list');
     const formBox = document.getElementById('checkout-form-container');
@@ -197,28 +157,18 @@ function renderCart() {
         if(formBox) formBox.classList.add('hidden');
         return;
     }
-    
     if(formBox) formBox.classList.remove('hidden');
-    
     cart.forEach((item, index) => {
         list.innerHTML += `
-            <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center gap-3">
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <!-- REQUIREMENT: Checkbox selection architecture toggler -->
-                    <input type="checkbox" ${item.selected ? 'checked' : ''} onchange="toggleCartItemSelection(${index})" class="w-4 h-4 rounded text-orange-500 bg-slate-900 border-gray-800 focus:ring-orange-500 focus:ring-opacity-25 focus:ring-2 accent-orange-500 cursor-pointer">
-                    <div class="min-w-0 flex-1">
-                        <h4 class="font-extrabold text-xs text-white truncate">${item.title}</h4>
-                        <p class="text-[10px] text-orange-400 font-bold">PKR ${item.price}</p>
-                    </div>
+            <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center">
+                <div>
+                    <h4 class="font-extrabold text-xs text-white">${item.title}</h4>
+                    <p class="text-[10px] text-orange-400 font-bold">PKR ${item.price}</p>
                 </div>
-                <button onclick="cart.splice(${index},1); renderCart();" class="text-xs text-rose-400 p-1 shrink-0"><i class="fa-solid fa-trash-can"></i></button>
+                <button onclick="cart.splice(${index},1); renderCart();" class="text-xs text-rose-400"><i class="fa-solid fa-trash-can"></i></button>
             </div>
         `;
     });
-}
-
-function toggleCartItemSelection(index) {
-    cart[index].selected = !cart[index].selected;
 }
 
 async function processOrderCheckout() {
@@ -228,96 +178,21 @@ async function processOrderCheckout() {
     const address = document.getElementById('b-address').value;
     if(!name || !email || !phone || !address) return showNotification("Fill complete credentials.", "error");
 
-    // Filter only selected checked items for backend handling pipeline processing
-    const selectedItems = cart.filter(item => item.selected);
-    if (selectedItems.length === 0) return showNotification("Please select at least one item to checkout.", "error");
-
     try {
         const res = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: selectedItems, buyerName: name, buyerEmail: email, buyerPhone: phone, buyerAddress: address })
+            body: JSON.stringify({ items: cart, buyerName: name, buyerEmail: email, buyerPhone: phone, buyerAddress: address })
         });
         if (res.ok) {
             showNotification("Order pipeline secured! Dispatched confirmation email updates.");
-            // Remove processed items from cart structure, leave unselected items
-            cart = cart.filter(item => !item.selected);
+            cart = [];
             switchTab('account');
         }
     } catch(e) {}
 }
 
-// REQUIREMENT: Comment Attachment Previews System Logic Mapping
-let commentAttachedBase64 = null;
-
-function previewCommentImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            commentAttachedBase64 = e.target.result;
-            document.getElementById('comment-preview-src').src = e.target.result;
-            document.getElementById('comment-img-preview').classList.remove('hidden');
-        }
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-function clearCommentImage() {
-    commentAttachedBase64 = null;
-    document.getElementById('c-image-file').value = "";
-    document.getElementById('comment-img-preview').classList.add('hidden');
-}
-
-async function loadProductComments(productId) {
-    const container = document.getElementById('comments-container');
-    if (!container) return;
-    container.innerHTML = `<p class="text-[10px] text-gray-500 text-center py-2">Syncing live feedback loops...</p>`;
-    try {
-        const res = await fetch(`/api/products/${productId}/comments`);
-        const comments = await res.json();
-        container.innerHTML = '';
-        if(comments.length === 0) {
-            container.innerHTML = `<p class="text-[10px] text-gray-500 text-center py-4">No reviews posted yet for this product item setup.</p>`;
-            return;
-        }
-        comments.forEach(c => {
-            let imgBlock = c.commentImage ? `<img src="${c.commentImage}" class="w-full max-h-40 object-cover rounded-xl mt-2 border border-gray-900 bg-slate-950">` : '';
-            container.innerHTML += `
-                <div class="bg-slate-950/70 border border-gray-900/60 rounded-xl p-3 space-y-1">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-black text-orange-400">${c.userHandle}</span>
-                        <span class="text-[8px] text-gray-500">${new Date(c.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <p class="text-xs text-gray-200 leading-normal">${c.text}</p>
-                    ${imgBlock}
-                </div>
-            `;
-        });
-    } catch(err) {
-        container.innerHTML = `<p class="text-[10px] text-rose-400 text-center py-2">Failed to sync reviews pipeline architecture.</p>`;
-    }
-}
-
-async function submitProductComment() {
-    const text = document.getElementById('c-text').value;
-    if(!text && !commentAttachedBase64) return showNotification("Comment body field logic empty.", "error");
-    const userHandle = currentUser ? currentUser.email : "Anonymous Buyer";
-
-    try {
-        const res = await fetch(`/api/products/${currentViewingProductId}/comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userHandle, text, commentImage: commentAttachedBase64 })
-        });
-        if(res.ok) {
-            showNotification("Review logs updated successfully.");
-            document.getElementById('c-text').value = '';
-            clearCommentImage();
-            loadProductComments(currentViewingProductId);
-        }
-    } catch(e) { showNotification("Failed to post statement to live servers.", "error"); }
-}
-
+// 🛠️ FIXED: UI content structure changing seamlessly with "Add New Product" dynamic injector
 async function updateProfilePanel() {
     const authBox = document.getElementById('auth-box');
     const profilePanel = document.getElementById('profile-panel');
@@ -338,6 +213,7 @@ async function updateProfilePanel() {
     if (!orderContainer) return;
     orderContainer.innerHTML = '';
 
+    // SELLER CONTEXT PROFILE SETUP
     if (currentAccountType === 'seller') {
         if (headingTitle) {
             headingTitle.innerHTML = `
@@ -360,11 +236,10 @@ async function updateProfilePanel() {
                 return;
             }
             items.forEach(p => {
-                const displayImg = Array.isArray(p.imageUrls) ? p.imageUrls[0] : p.imageUrl;
                 orderContainer.innerHTML += `
                     <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center gap-2 mt-2">
                         <div class="min-w-0 flex-grow flex items-center gap-3">
-                            <img src="${displayImg || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}" class="w-10 h-10 rounded-xl object-cover border border-gray-800">
+                            <img src="${p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}" class="w-10 h-10 rounded-xl object-cover border border-gray-800">
                             <div class="min-w-0 flex-1">
                                 <h5 class="font-extrabold text-xs truncate text-white">${p.title}</h5>
                                 <p class="text-[10px] text-orange-400 font-bold">PKR ${p.price}</p>
@@ -379,6 +254,7 @@ async function updateProfilePanel() {
             });
         } catch(e) {}
     } else {
+        // BUYER ACCOUNT HISTORY SYNC 
         if (headingTitle) headingTitle.innerHTML = `<span class="font-extrabold text-xs text-white"><i class="fa-solid fa-basket-shopping text-orange-400 mr-1"></i> Your Placed Orders Summary</span>`;
         try {
             const res = await fetch(`/api/orders/user/${currentUser.email}`);
@@ -433,7 +309,6 @@ async function deleteProductItem(productId) {
     } catch(e) {}
 }
 
-// REQUIREMENT: Upgraded to convert all selected image files into a base64 Array layout framework
 async function handleProductUpload(event) {
     event.preventDefault();
     const title = document.getElementById('p-title').value;
@@ -442,25 +317,21 @@ async function handleProductUpload(event) {
     const category = document.getElementById('p-category').value;
     const imgInput = document.getElementById('p-image-file');
 
-    let base64ImagesArray = [];
+    let base64Image = "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400";
     if (imgInput.files.length > 0) {
-        for (let file of imgInput.files) {
-            const reader = new FileReader();
-            let b64 = await new Promise((res) => {
-                reader.onload = (e) => res(e.target.result);
-                reader.readAsDataURL(file);
-            });
-            base64ImagesArray.push(b64);
-        }
-    } else {
-        base64ImagesArray.push("https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400");
+        const file = imgInput.files[0];
+        const reader = new FileReader();
+        base64Image = await new Promise((res) => {
+            reader.onload = (e) => res(e.target.result);
+            reader.readAsDataURL(file);
+        });
     }
 
     try {
         const res = await fetch('/api/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, price, description, category, imageUrls: base64ImagesArray, sellerEmail: currentUser.email })
+            body: JSON.stringify({ title, price, description, category, imageBase64: base64Image, sellerEmail: currentUser.email })
         });
         if(res.ok) {
             showNotification("Product listing uploaded for admin review pipeline processing.");
@@ -499,14 +370,6 @@ function logout() {
     showNotification("Session cleared. Account logged out.");
     updateProfilePanel();
     switchTab('home');
-}
-
-function previewMedia(input, labelId) {
-    const lbl = document.getElementById(labelId);
-    if(lbl && input.files.length > 0) {
-        lbl.textContent = `${input.files.length} Item(s) Selected Sequence ready.`;
-        lbl.className = "text-xs text-emerald-400 block font-bold";
-    }
 }
 
 window.onload = () => {
