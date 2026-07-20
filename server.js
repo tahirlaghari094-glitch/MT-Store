@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
-const path = require('path'); // Static path serve karne ke liye naya required package
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -12,13 +12,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// 1. DATABASE CONNECTION
+// 1. DATABASE CONNECTION (With Safe Error Fallback)
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/mt-store', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
 .then(() => console.log('MongoDB Connected Successfully'))
-.catch(err => console.error('MongoDB Connection Error:', err));
+.catch(err => {
+  console.error('MongoDB Connection Error:', err);
+  // Isko block nahi karenge taake static index.html load ho sake
+});
 
 // 2. PRODUCT SCHEMA
 const productSchema = new mongoose.Schema({
@@ -178,17 +181,17 @@ app.post('/api/orders/checkout', async (req, res) => {
   }
 });
 
-// === STATIC FILE SERVING FOR FRONTEND (Cannot GET / FIX) ===
+// === STATIC FILE SERVING FOR FRONTEND ===
 app.use(express.static(path.join(__dirname)));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Global error handler
+// Safe Error Catcher (Taake database error frontend block na kare)
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: "Internal Server Failure" });
+  res.status(200).sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 5000;
