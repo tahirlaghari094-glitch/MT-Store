@@ -4,367 +4,238 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MT Store - Premium Multi-Vendor Hub</title>
-    <!-- Tailwind Engine -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Library Assets -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #0b0f19; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0b0f19; }
-        ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 10px; }
-        .premium-glass { background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.06); }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #070a13;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tab-view { display: none; }
+        .tab-view.active { display: block; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="antialiased min-h-screen flex flex-col justify-between">
+<body class="text-slate-100 min-h-screen pb-24">
 
-    <!-- NAVIGATION HEADER ELEMENT -->
-    <nav class="bg-slate-900/90 border-b border-gray-800/80 sticky top-0 z-50 px-4 py-3.5 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl font-black text-orange-500 tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-bolt text-amber-400 animate-pulse"></i> MT STORE
-                </span>
-                <span class="hidden md:inline-block text-[10px] font-bold tracking-widest bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-md border border-orange-500/20 uppercase">Premium Hub</span>
-            </div>
-            
-            <div class="flex items-center gap-6">
-                <!-- Navigation Items -->
-                <a href="#" class="text-sm font-semibold text-gray-300 hover:text-orange-500 transition">Storefront</a>
-                <a href="#" class="text-sm font-semibold text-gray-400 hover:text-orange-500 transition hidden sm:block">Dashboard</a>
-                
-                <!-- Dynamic Cart Trigger Icon -->
-                <button class="relative text-gray-300 hover:text-orange-500 transition text-xl p-1">
-                    <i class="fa-solid fa-basket-shopping"></i>
-                    <span id="cartCountBadge" class="absolute -top-1.5 -right-2.5 bg-orange-500 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center shadow-md shadow-orange-500/20">0</span>
+    <!-- Top Navigation Header -->
+    <header class="fixed top-0 left-0 right-0 bg-[#070a13]/80 backdrop-blur-xl border-b border-gray-900 z-40 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2" onclick="switchTab('home')">
+            <span class="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 cursor-pointer">MT STORE</span>
+            <span id="user-status-badge" class="hidden text-[9px] bg-orange-500/10 border border-orange-500/20 text-orange-400 font-extrabold px-2 py-0.5 rounded-full uppercase"></span>
+        </div>
+        
+        <!-- Account Dropdown Menu Toggle -->
+        <div class="relative">
+            <button onclick="toggleDropdown()" class="w-10 h-10 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div id="accountDropdown" class="hidden absolute right-0 mt-2 w-56 bg-slate-950 border border-gray-900 rounded-2xl shadow-2xl p-2 z-50">
+                <button onclick="setAccountType('common')" class="w-full text-left px-4 py-3 text-xs font-bold rounded-xl hover:bg-slate-900 text-gray-300 transition flex items-center gap-2">
+                    <i class="fa-solid fa-user text-gray-500"></i> Common Buyer Mode
+                </button>
+                <button onclick="setAccountType('seller')" class="w-full text-left px-4 py-3 text-xs font-bold rounded-xl hover:bg-slate-900 text-orange-400 transition flex items-center gap-2">
+                    <i class="fa-solid fa-shop text-orange-500/70"></i> Become a Seller
+                </button>
+                <div class="border-t border-gray-900 my-1"></div>
+                <button onclick="logout()" class="w-full text-left px-4 py-3 text-xs font-bold rounded-xl hover:bg-rose-500/10 text-rose-400 transition flex items-center gap-2">
+                    <i class="fa-solid fa-power-off"></i> Logout Session
                 </button>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <!-- MAIN BODY SECTION GRID CONTEXT -->
-    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow w-full">
+    <!-- Main Dynamic Application Container Views -->
+    <main class="max-w-md mx-auto px-4 pt-20">
         
-        <!-- SIDE COLUMN PANEL 1 & 2: VENDOR SUBMISSIONS AND ACTIVE EXAMPLES -->
-        <div class="lg:col-span-2 space-y-8">
-            
-            <!-- VENDOR APPLICATION FORM WIDGET -->
-            <div class="bg-slate-900 border border-gray-800/90 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
-                
-                <div class="flex items-center gap-3 mb-5">
-                    <div class="p-2.5 bg-orange-500/10 rounded-xl text-orange-500 text-lg"><i class="fa-solid fa-square-plus"></i></div>
+        <!-- 1. HOME VIEW CONTAINER -->
+        <div id="home-view" class="tab-view active space-y-6">
+            <div class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 to-slate-950 border border-gray-850 p-6">
+                <h1 class="text-2xl font-black leading-tight">Premium Multi-Vendor<br><span class="text-orange-400">Store Marketplace</span></h1>
+                <p class="text-xs text-gray-400 mt-2">Browse secure item catalogs directly from verified platform vendors.</p>
+            </div>
+            <div id="product-grid" class="grid grid-cols-2 gap-3">
+                <!-- Products dynamically rendered here -->
+            </div>
+        </div>
+
+        <!-- 2. PRODUCT DETAILS VIEW -->
+        <div id="detail-view" class="tab-view space-y-6">
+            <button onclick="switchTab('home')" class="inline-flex items-center gap-2 text-xs text-gray-400 font-bold bg-slate-900 px-4 py-2 rounded-full border border-gray-800">
+                <i class="fa-solid fa-arrow-left"></i> Back to Products
+            </button>
+            <div id="product-detail-content" class="bg-slate-900/30 border border-gray-900 rounded-3xl p-4 space-y-6">
+                <!-- Dynamic detail rendered here -->
+            </div>
+        </div>
+
+        <!-- 3. SELLER UPLOAD DASHBOARD VIEW -->
+        <div id="seller-view" class="tab-view space-y-6">
+            <div class="flex bg-slate-950 p-1.5 rounded-2xl border border-gray-900">
+                <button id="btn-sub-upload" onclick="switchSellerSubTab('upload')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950">Add Listing</button>
+                <button id="btn-sub-history" onclick="switchSellerSubTab('history')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-slate-900 text-gray-300">Active Pipeline</button>
+            </div>
+
+            <!-- Upload Sub-Tab Form -->
+            <div id="seller-upload-tab" class="tab-view active">
+                <form id="product-upload-form" onsubmit="handleProductUpload(event)" class="space-y-4">
                     <div>
-                        <h2 class="text-lg font-bold text-white">Create Vendor Marketplace Listing</h2>
-                        <p class="text-xs text-gray-400">Fill standard data variables to route verification records straight to admin portal control modules.</p>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Product Title</label>
+                        <input type="text" id="p-title" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
                     </div>
-                </div>
-                
-                <!-- Policy Notification Notice Block Requirement Inject -->
-                <div class="bg-gradient-to-r from-orange-500/10 to-amber-500/5 border border-orange-500/20 text-orange-400/90 p-4 rounded-xl text-xs mb-6 flex gap-3.5 items-start leading-relaxed shadow-inner">
-                    <i class="fa-solid fa-circle-exclamation text-base mt-0.5 text-orange-400 flex-shrink-0 animate-bounce"></i>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Price (PKR)</label>
+                            <input type="number" id="p-price" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Category</label>
+                            <select id="p-category" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                                <option value="electronics">Electronics</option>
+                                <option value="fashion">Fashion</option>
+                                <option value="services">Premium Services</option>
+                            </select>
+                        </div>
+                    </div>
                     <div>
-                        <span class="font-bold text-white uppercase tracking-wider block mb-1 text-[11px]"><i class="fa-solid fa-shield-halved mr-1"></i> Mandatory Registration Policy Notice:</span> 
-                        Kindly transfer a standardized listing validation asset configuration parameter fee of <span class="text-white font-black underline bg-orange-500/20 px-1 py-0.5 rounded">50 PKR</span> straight to official receiver payment account number string: <span class="text-white font-mono font-bold bg-slate-950 px-2 py-0.5 rounded border border-gray-800 tracking-wider shadow">03113841402</span> via Easypaisa system apps. Paste your returned 11-digit Receipt Transaction Token ID structure inside form modules input console field below to trigger server routing operations.
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Description</label>
+                        <textarea id="p-description" rows="3" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition"></textarea>
                     </div>
-                </div>
-
-                <!-- Input Submittal Element Core Framework Form Object -->
-                <form id="addProductForm" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Product Title / Title</label>
-                            <input type="text" id="pTitle" placeholder="e.g., Luxury Stainless Chronograph" class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none text-white text-sm transition" required>
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Market Retailing Price (PKR)</label>
-                            <input type="number" id="pPrice" placeholder="e.g., 15000" class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none text-white text-sm transition" required>
-                        </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
+                            <span id="lbl-images" class="text-xs text-gray-400 block">Select 3 Product Images</span>
+                            <input type="file" id="p-image-file" multiple accept="image/*" class="hidden" onchange="previewMedia(this, 'lbl-images')">
+                        </label>
+                        <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
+                            <span id="lbl-video" class="text-xs text-gray-400 block">Attach Item Video</span>
+                            <input type="file" id="p-video-file" accept="video/*" class="hidden" onchange="previewMedia(this, 'lbl-video')">
+                        </label>
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Cloudinary / Public Image URL Asset</label>
-                            <input type="text" id="pImage" placeholder="https://images.unsplash.com/..." class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none text-white text-sm transition" required>
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Inventory Category Filter Label</label>
-                            <input type="text" id="pCategory" placeholder="e.g., Premium Watches" class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none text-white text-sm transition" required>
-                        </div>
-                    </div>
-
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Item Description & Structural Specifications</label>
-                        <textarea id="pDesc" placeholder="Enter complete component material details, guarantees, sizing and color variance specifications here..." class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none text-white text-sm h-24 resize-none transition" required></textarea>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Email Address Verification</label>
+                        <input type="email" id="p-email" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed" readonly>
                     </div>
-                    
-                    <!-- Vendor Meta Context Container Fields Module Block -->
-                    <div class="border-t border-gray-800/80 pt-5 mt-4">
-                        <div class="flex items-center gap-2 mb-3.5">
-                            <i class="fa-solid fa-address-card text-orange-500 text-xs"></i>
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-300">Identity & Payment Receipt Validation Array</h3>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Vendor Identity / Shop Title</label>
-                                <input type="text" id="sName" placeholder="e.g., MT Official Store Hub" class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 outline-none text-white text-sm" required>
-                            </div>
-                            <div>
-                                <!-- Unlocked configured notification seller route element input field -->
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Merchant Order Notification Email (Unlocked Link)</label>
-                                <input type="email" id="sEmail" placeholder="e.g., merchant-desk@domain.com" class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 outline-none text-white text-sm text-orange-400" required>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Mobile Contact Helpline Number</label>
-                                <input type="tel" id="sPhone" placeholder="e.g., 03XXXXXXXXX" class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 outline-none text-white text-sm" required>
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Commercial Showroom / Warehouse Address</label>
-                                <input type="text" id="sAddress" placeholder="e.g., Block 5, Main Commercial Boulevard, Karachi" class="w-full p-3 rounded-xl bg-slate-950 border border-gray-800 focus:border-orange-500 outline-none text-white text-sm" required>
-                            </div>
-                        </div>
-
-                        <div class="mt-4 bg-slate-950 p-4 rounded-xl border border-orange-500/20 shadow-md">
-                            <label class="block text-[11px] text-orange-400 font-bold uppercase tracking-wider mb-1.5"><i class="fa-solid fa-receipt mr-1"></i> Transmitted Easypaisa 11-Digit TRX Receipt Token ID</label>
-                            <input type="text" id="epReceipt" maxlength="11" placeholder="Enter the exact 11-Digit numerical string returned via SMS/App" class="w-full p-3 rounded-lg bg-slate-900 border border-gray-700 text-orange-400 text-sm focus:border-orange-500 outline-none font-mono tracking-widest font-bold" required>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="w-full bg-gradient-to-r from-orange-500 internally-animate to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white p-3.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/10 text-sm uppercase tracking-wider mt-3">Submit Listing to Verification Pipeline</button>
+                    <button type="submit" class="w-full bg-orange-500 text-slate-950 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">Submit Store Verification Pipeline</button>
                 </form>
             </div>
+            
+            <div id="seller-history-tab" class="tab-view">
+                <p class="text-xs text-gray-500 text-center py-6">Check your live items under Account profile management view.</p>
+            </div>
+        </div>
 
-            <!-- CARD COMPONENT DESIGN DISPLAY VIEW WRAPPER PREVIEW CASE -->
-            <div class="bg-slate-900 border border-gray-800/90 rounded-2xl p-6 shadow-xl space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="relative group">
-                        <img id="viewProductImage" src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600" class="w-full h-72 rounded-xl object-cover border border-gray-800/60 shadow-md transition duration-300 group-hover:scale-[1.01]" alt="Live Product Profile">
-                        <span class="absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest text-orange-400 bg-slate-950/90 px-3 py-1.5 rounded-md border border-gray-800">Featured Display Sample</span>
-                    </div>
-                    
-                    <div class="flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-orange-500 bg-orange-500/10 px-2.5 py-1 rounded-md border border-orange-500/20">Chronographs</span>
-                            <h1 id="viewProductTitle" class="text-xl font-extrabold text-white tracking-tight leading-snug">Minimalist GMT Smart Edition Watch</h1>
-                            <p id="viewProductPrice" class="text-2xl text-orange-400 font-black tracking-tight">PKR 4,999</p>
-                            <p id="viewProductDesc" class="text-gray-400 text-xs leading-relaxed">High-definition sleek AMOLED display smart watch with intelligent biometric heart tracking sensors, premium steel framework accents and 7-day extended deployment lithium backup cell capacity configuration.</p>
-                            
-                            <!-- Static/Dynamic Metadata Indicators -->
-                            <div class="p-3.5 bg-slate-950 rounded-xl border border-gray-800 text-xs text-gray-400 space-y-1.5 mt-3">
-                                <p class="truncate"><strong class="text-gray-300"><i class="fa-solid fa-shop text-orange-500 w-4"></i> Vendor Profile:</strong> <span id="viewSellerName" class="text-white font-medium">MT Official Premium Hub Desk</span></p>
-                                <p class="truncate"><strong class="text-gray-300"><i class="fa-solid fa-location-dot text-orange-500 w-4"></i> Hub Origin:</strong> <span id="viewSellerAddress" class="text-white font-medium">Suite 404, Main Commercial Boulevard, Sindh Pakistan</span></p>
-                            </div>
-                        </div>
+        <!-- 4. CHECKOUT BASKET FLOW TAB -->
+        <div id="cart-view" class="tab-view space-y-6">
+            <h2 class="text-xl font-black">Your Checkout Basket</h2>
+            <div id="cart-items-list" class="space-y-3">
+                <!-- Cart list entries dynamic loop -->
+            </div>
+            <div id="checkout-form-container" class="hidden bg-slate-900/40 border border-gray-900 rounded-3xl p-4 space-y-4">
+                <h4 class="text-xs font-black uppercase text-orange-400 tracking-wider">Cash On Delivery Billing Address</h4>
+                <div class="space-y-3">
+                    <input type="text" id="b-name" placeholder="Full Legal Name" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <input type="email" id="b-email" placeholder="Billing Email Address" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <input type="tel" id="b-phone" placeholder="Contact Mobile Number" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <textarea id="b-address" placeholder="Complete Door Delivery Address Layout" rows="2" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition"></textarea>
+                </div>
+                <button onclick="processOrderCheckout()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs transition uppercase">Confirm Secure Order Purchase</button>
+            </div>
+        </div>
 
-                        <!-- Active Request CTA Execution Form Action Triggers -->
-                        <div class="flex gap-3 pt-2">
-                            <button class="flex-1 bg-slate-800 hover:bg-slate-700 text-gray-200 py-3 px-4 rounded-xl text-xs font-bold border border-gray-700 transition flex items-center justify-center gap-2"><i class="fa-solid fa-cart-plus text-orange-500 text-sm"></i>Add To Active Cart</button>
-                            <!-- Buy Now Action Configuration Option Block -->
-                            <button class="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white py-3 px-4 rounded-xl text-xs font-bold transition shadow-lg shadow-orange-500/15 flex items-center justify-center gap-2"><i class="fa-solid fa-bolt text-amber-300 text-sm"></i>Buy Now Instant</button>
-                        </div>
+        <!-- 5. ACCOUNT PROFILE & AUTH HUB VIEW -->
+        <div id="account-view" class="tab-view space-y-6">
+            <!-- Unauthenticated Box -->
+            <div id="auth-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-6 space-y-4">
+                <div>
+                    <h3 class="text-lg font-black">Secure Account Access</h3>
+                    <p class="text-xs text-gray-400">Provide credentials to coordinate multi-vendor dashboard profiles.</p>
+                </div>
+                <div class="space-y-3">
+                    <input type="email" id="auth-email" placeholder="Email Address" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <input type="password" id="auth-password" placeholder="Password Sequence" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                </div>
+                <button onclick="handleAuth()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition">Authenticate Live Session</button>
+            </div>
+
+            <!-- Profile Dash Mode View Panel -->
+            <div id="profile-panel" class="hidden space-y-6">
+                <div class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-orange-500 text-slate-950 flex items-center justify-center font-black text-lg shadow-lg" id="panel-avatar">MT</div>
+                    <div class="min-w-0 flex-1">
+                        <h4 id="panel-username" class="font-black text-sm truncate text-white">User Handle</h4>
+                        <p id="panel-email" class="text-xs text-gray-400 truncate">user@domain.com</p>
+                        <span id="panel-role" class="inline-block text-[9px] bg-slate-950 border border-gray-800 px-2 py-0.5 rounded-md text-orange-400 font-bold uppercase mt-1">Common Mode</span>
                     </div>
                 </div>
 
-                <!-- INTEGRATED COMMENT MODULE SYSTEM WITH MEDIA HOOK ATTACHMENT PIN -->
-                <div class="mt-4 border-t border-gray-800/80 pt-5">
-                    <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3.5 flex items-center gap-2"><i class="fa-solid fa-comments text-orange-500"></i>Verified Customer Reviews & Public Responses</h3>
-                    
-                    <div class="bg-slate-950 p-2.5 rounded-xl border border-gray-800 flex items-center gap-3 shadow-inner">
-                        <textarea id="commentText" placeholder="Share your experience or ask vendor questions regarding item configuration lines..." class="flex-1 bg-transparent text-xs text-gray-200 placeholder-gray-600 resize-none outline-none p-2 h-9 line-clamp-1 leading-normal" rows="1"></textarea>
-                        
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                            <!-- Paperclip Pin Icon Attachment Node Inject for Gallery/Local Storage Hook Interaction -->
-                            <label id="pinAttachmentLabel" for="commentMedia" class="cursor-pointer text-gray-500 hover:text-orange-500 p-2.5 rounded-xl hover:bg-slate-900 transition-all" title="Attach Media Evidence Assets (Photos/Video Logs)">
-                                <i class="fa-solid fa-paperclip text-base"></i>
-                            </label>
-                            <input type="file" id="commentMedia" accept="image/*,video/*" class="hidden" multiple>
-                            
-                            <button type="button" onclick="alert('Comment compilation execution completed.')" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-[11px] font-bold transition tracking-wider uppercase">Post</button>
-                        </div>
+                <!-- DYNAMIC RENDERING: Your Placed Orders Summary / Your Uploaded Products -->
+                <div class="space-y-3">
+                    <h3 id="profile-orders-heading" class="text-xs font-black uppercase tracking-wider text-gray-400 flex justify-between items-center w-full">
+                        <!-- Headings inject dynamically here along with Add Product links in JavaScript -->
+                    </h3>
+                    <div id="orders-summary-container" class="space-y-2">
+                        <!-- Dynamic conditional order elements loop maps securely inside here -->
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- SIDE PANEL COLUMN 3: SELECTED ITEM BASKET FILTERS & SELECTIVE CHECKOUT WORKFLOW -->
-        <div class="lg:col-span-1">
-            <div class="bg-slate-900 border border-gray-800/90 rounded-2xl p-5 shadow-2xl sticky top-24 space-y-4">
-                <div class="flex items-center justify-between border-b border-gray-800/80 pb-3">
-                    <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-orange-500"></i>Selected Items Basket</h3>
-                    <span class="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">Active Line Filtering</span>
+        <!-- 6. MESSAGES TAB VIEW (CENTRAL COMMAND HOUSES ONLY INSIDE HERE) -->
+        <div id="messages-view" class="tab-view space-y-6">
+            <h2 class="text-xl font-black">Support Channels</h2>
+            
+            <!-- 🛠️ FIXED: Central Command Support box strictly isolated only to Messages Page -->
+            <div id="central-command-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4" style="box-shadow: none !important; border: 1px solid #1e293b !important;">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center font-black text-xs">MT</div>
+                    <div>
+                        <h4 class="font-extrabold text-xs text-white">Central Command Support</h4>
+                        <p class="text-[9px] text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span> Network Router Online</p>
+                    </div>
                 </div>
-
-                <!-- Selective Cart Container Content Wrapper Holder Rows Object -->
-                <div id="cartItemsContainer" class="space-y-3 max-h-80 overflow-y-auto pr-1">
-                    
-                    <!-- Dummy Storage Data Product Line 1 (Checked Active Target Asset) -->
-                    <div class="flex items-center gap-3 bg-slate-950 p-3 rounded-xl border border-gray-800/60 shadow-sm transition hover:border-gray-700">
-                        <!-- Active Control Filtering Checkbox Selector Box Field Component -->
-                        <input type="checkbox" data-id="demo_id_1" data-price="4999" class="cart-item-select w-4 h-4 rounded accent-orange-500 cursor-pointer shadow border-gray-700 focus:ring-0" checked>
-                        <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120" class="w-12 h-12 rounded-lg object-cover border border-gray-800 flex-shrink-0">
-                        <div class="flex-1 min-w-0">
-                            <h4 class="text-xs font-bold text-gray-200 truncate">Minimalist Smart Watch</h4>
-                            <p class="text-[11px] text-orange-400 font-bold mt-0.5">PKR 4,999</p>
-                        </div>
-                    </div>
-
-                    <!-- Dummy Storage Data Product Line 2 (Unchecked Default Filtered Out Line Item Exception) -->
-                    <div class="flex items-center gap-3 bg-slate-950 p-3 rounded-xl border border-gray-800/40 opacity-60 shadow-sm transition hover:border-gray-700">
-                        <!-- Active Control Filtering Checkbox Selector Box Field Component -->
-                        <input type="checkbox" data-id="demo_id_2" data-price="2500" class="cart-item-select w-4 h-4 rounded accent-orange-500 cursor-pointer shadow border-gray-700 focus:ring-0">
-                        <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120" class="w-12 h-12 rounded-lg object-cover border border-gray-800 flex-shrink-0">
-                        <div class="flex-1 min-w-0">
-                            <h4 class="text-xs font-bold text-gray-200 truncate">Wireless Studio Over-Ear Headphones</h4>
-                            <p class="text-[11px] text-orange-400 font-bold mt-0.5">PKR 2,500</p>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Aggregate Computation Total Module Component Display -->
-                <div class="pt-4 border-t border-gray-800/80 space-y-3">
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-400 font-medium">Filtered Selection Total:</span>
-                        <span id="cartTotalDisplay" class="text-lg font-black text-orange-500 tracking-tight">PKR 4,999</span>
-                    </div>
-                    
-                    <button id="checkoutBtn" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-orange-500/10">Proceed Selected Checkout Order</button>
+                <div class="border-t border-gray-900 my-2"></div>
+                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900/60 text-xs text-gray-300 leading-relaxed">
+                    Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
                 </div>
             </div>
+
+            <p class="text-xs text-gray-500 text-center py-4">No additional active message thread history detected.</p>
         </div>
+
     </main>
 
-    <!-- FOOTER PANEL MARGIN ELEMENT -->
-    <footer class="w-full bg-slate-950 border-t border-gray-900 py-4 text-center text-xs text-gray-500">
-        &copy; 2026 MT Store Engine Processing Network Cluster. All Vendor Privileges Secured.
-    </footer>
+    <!-- Global Toast Notifications Popup System -->
+    <div id="toast-notification" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900 border border-transparent text-transparent px-5 py-3 rounded-2xl shadow-xl transition opacity-0 -translate-y-4 pointer-events-none">
+        <i class="fa-solid fa-circle-info text-xs"></i>
+        <span id="toast-message" class="text-xs font-bold">Alert Message Pipeline.</span>
+    </div>
 
-    <!-- INTERACTION CONTROLLERS OBJECTS JAVASCRIPT LOGIC CODE -->
-    <script>
-        // Array configurations representation variables
-        let globalMemoryCartArray = [
-            { _id: "demo_id_1", title: "Minimalist Smart Watch", price: 4999 },
-            { _id: "demo_id_2", title: "Wireless Studio Over-Ear Headphones", price: 2500 }
-        ];
+    <!-- Bottom Persistent Floating Navigation Hub -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#070a13]/90 backdrop-blur-2xl border-t border-gray-900 z-40 py-2.5">
+        <div class="max-w-md mx-auto flex justify-around items-center">
+            <button onclick="switchTab('home')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-house text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Home</span>
+            </button>
+            <button onclick="switchTab('messages')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-comments text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Message</span>
+            </button>
+            <button onclick="switchTab('cart')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-cart-shopping text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Cart</span>
+            </button>
+            <button onclick="switchTab('account')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-user-gear text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Account</span>
+            </button>
+        </div>
+    </nav>
 
-        // 1. Live Aggregate Calculation Checkbox Input Filtering Logic Engine
-        function evaluateSelectedTotals() {
-            let totalAccumulatedAmount = 0;
-            let activelySelectedCounter = 0;
-            
-            document.querySelectorAll('.cart-item-select').forEach(checkbox => {
-                if(checkbox.checked) {
-                    totalAccumulatedAmount += parseInt(checkbox.getAttribute('data-price'));
-                    activelySelectedCounter++;
-                }
-            });
-            
-            document.getElementById('cartTotalDisplay').innerText = `PKR ${totalAccumulatedAmount.toLocaleString()}`;
-            document.getElementById('cartCountBadge').innerText = activelySelectedCounter;
-        }
-
-        // Bind Change State Trigger Handler Hooks across Document Element Trees
-        document.querySelectorAll('.cart-item-select').forEach(checkbox => {
-            checkbox.addEventListener('change', evaluateSelectedTotals);
-        });
-
-        // 2. Action Checkout Submission Pipeline Filter Trigger Action
-        document.getElementById('checkoutBtn').addEventListener('click', async () => {
-            const filteredCheckoutPayloadQueue = [];
-            
-            document.querySelectorAll('.cart-item-select').forEach(checkbox => {
-                if (checkbox.checked) {
-                    const targetDataIdString = checkbox.getAttribute('data-id');
-                    const contextProductMatch = globalMemoryCartArray.find(item => item._id === targetDataIdString);
-                    if (contextProductMatch) {
-                        filteredCheckoutPayloadQueue.push({
-                            id: contextProductMatch._id,
-                            title: contextProductMatch.title,
-                            price: contextProductMatch.price,
-                            quantity: 1
-                        });
-                    }
-                }
-            });
-
-            if(filteredCheckoutPayloadQueue.length === 0) {
-                alert("🔴 Processing Halt: Please filter or select/check at least one valid line item within the active list array checkbox controls to submit checkout metadata.");
-                return;
-            }
-
-            // Dummy structure representation data definitions 
-            const buyerProfileMock = {
-                name: "Verified Portal Test Guest",
-                phone: "03217654321",
-                address: "Flat C-19, Phase 2, Commercial Lane, Mirpur Khas, Sindh"
-            };
-
-            console.log("Transmitting Processed Checkout Array Packets:", { items: filteredCheckoutPayloadQueue, buyerDetails: buyerProfileMock });
-            
-            try {
-                const networkResponse = await fetch('/api/orders/checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: filteredCheckoutPayloadQueue, buyerDetails: buyerProfileMock })
-                });
-                const cleanResultDataJson = await networkResponse.json();
-                if(cleanResultDataJson.success) {
-                    alert("✓ Transaction Workflows Executed Successfully! Verification confirmation sent across vendor pipeline channels.");
-                }
-            } catch (err) {
-                console.error("Critical Exception Catch Routine Executed:", err);
-            }
-        });
-
-        // 3. New Marketplace Upload Submission Handler Object Mapping Routine
-        document.getElementById('addProductForm').addEventListener('submit', async (eventObject) => {
-            eventObject.preventDefault();
-            
-            const structuredProductFormPayload = {
-                title: document.getElementById('pTitle').value,
-                price: parseFloat(document.getElementById('pPrice').value),
-                image: document.getElementById('pImage').value,
-                category: document.getElementById('pCategory').value,
-                description: document.getElementById('pDesc').value,
-                sellerName: document.getElementById('sName').value,
-                sellerEmail: document.getElementById('sEmail').value,
-                sellerPhone: document.getElementById('sPhone').value,
-                shopAddress: document.getElementById('sAddress').value,
-                easypaisaReceipt: document.getElementById('epReceipt').value
-            };
-
-            try {
-                const submittalResponseStream = await fetch('/api/products/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(structuredProductFormPayload)
-                });
-                const payloadResponseFeedback = await submittalResponseStream.json();
-                if(payloadResponseFeedback.success) {
-                    alert("✓ Asset Application Transmitted! Dynamic action routes built inside administration desk inboxes.");
-                    document.getElementById('addProductForm').reset();
-                }
-            } catch (apiNetworkConnectionException) {
-                alert("🔴 Processing Failure: Exception tracking handled during endpoint dispatch routine.");
-            }
-        });
-
-        // Media Pin Hook Log tracker response event logic binding example
-        document.getElementById('commentMedia').addEventListener('change', (e) => {
-            const chosenFileLengthCount = e.target.files.length;
-            if(chosenFileLengthCount > 0) {
-                document.getElementById('pinAttachmentLabel').classList.remove('text-gray-500');
-                document.getElementById('pinAttachmentLabel').classList.add('text-orange-500');
-                alert(`✓ Attached ${chosenFileLengthCount} files locally. Metadata registered.`);
-            }
-        });
-
-        // Initial component mount triggers
-        evaluateSelectedTotals();
-    </script>
+    <!-- App Engine Script Logic Initiation Mapping -->
+    <script src="/main.js"></script>
 </body>
 </html>
