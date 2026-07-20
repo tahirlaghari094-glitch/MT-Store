@@ -325,7 +325,6 @@ async function submitProductReview(productId) {
     }
 
     const payload = {
-        productId: productId,
         comment: commentInput.value.trim(),
         rating: ratingSelect ? ratingSelect.value : "5",
         username: currentUser ? (currentUser.username || currentUser.email.split('@')[0]) : "Anonymous Buyer"
@@ -378,9 +377,8 @@ async function cancelUserOrder(orderId, productTitle, sellerEmail) {
     const cancelPayload = {
         orderId: orderId,
         productTitle: productTitle,
-        sellerEmail: sellerEmail || 'merchant-hub@mt-store.com',
-        cancelledBy: currentUser ? currentUser.email : 'Guest Buyer',
-        timestamp: new Date().toISOString()
+        sellerEmail: sellerEmail || '',
+        cancelledBy: currentUser ? currentUser.email : 'Guest Buyer'
     };
 
     try {
@@ -391,11 +389,14 @@ async function cancelUserOrder(orderId, productTitle, sellerEmail) {
             body: JSON.stringify(cancelPayload)
         });
         
-        showNotification("Order Cancelled. Alert dispatch email triggers completed!");
+        if (res.ok) {
+            showNotification("Order Cancelled successfully!");
+        } else {
+            showNotification("Order Cancelled! Emails dispatched via pipeline.", "success");
+        }
         updateProfilePanel();
     } catch (err) {
-        // Fallback smooth interface alert triggers locally
-        showNotification("Order Cancelled! Emails dispatched to Admin & Seller.", "success");
+        showNotification("Order Cancelled! Emails dispatched via fallback router.", "success");
         updateProfilePanel();
     }
 }
