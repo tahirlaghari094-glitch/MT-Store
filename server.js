@@ -112,13 +112,14 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
-// 🆕 Review Schema (Added for Merchant/Product Reviews)
+// 🆕 Review Schema (Sync with Frontend Fields)
 const ReviewSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true },
     productId: { type: String, required: true },
     comment: String,
-    media: [String], // Array to store multiple Base64 items (images/videos)
-    createdAt: { type: String, default: () => new Date().toISOString() }
+    rating: String,
+    username: String,
+    date: { type: String, default: () => new Date().toLocaleDateString() },
+    createdAt: { type: Date, default: Date.now }
 });
 const Review = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
 
@@ -170,38 +171,38 @@ app.post('/api/users/update', async (req, res) => {
 });
 
 // ==========================================
-// 💬 MERCHANT / PRODUCT REVIEWS APIS (🆕 ADDED)
+// 💬 MERCHANT / PRODUCT REVIEWS APIS (🆕 ROUTE SYNCED WITH FRONTEND)
 // ==========================================
 
 // 1. Get Reviews for a specific product
-app.get('/api/reviews/:productId', async (req, res) => {
+app.get('/api/products/:productId/reviews', async (req, res) => {
     try {
         const productReviews = await Review.find({ productId: req.params.productId }).sort({ createdAt: -1 });
-        res.json({ success: true, reviews: productReviews });
+        res.json(productReviews);
     } catch (e) {
         res.status(500).json({ error: "Failed to fetch product reviews" });
     }
 });
 
-// 2. Post a review with Base64 media arrays (Direct from Gallery)
-app.post('/api/reviews', async (req, res) => {
-    const { productId, comment, media } = req.body; // media must be an array of Base64 strings
-    if (!productId) return res.status(400).json({ error: "Product identification is missing." });
-    if (!comment && (!media || media.length === 0)) {
+// 2. Post a review
+app.post('/api/products/:productId/reviews', async (req, res) => {
+    const { comment, rating, username } = req.body;
+    const { productId } = req.params;
+
+    if (!comment) {
         return res.status(400).json({ error: "Review cannot be posted completely empty." });
     }
 
     try {
-        const reviewId = 'REV-' + Date.now();
         const newReview = new Review({
-            id: reviewId,
             productId,
-            comment: comment || "",
-            media: media || [] // Safely handles incoming array of files
+            comment,
+            rating: rating || "5",
+            username: username || "Anonymous Buyer"
         });
 
         await newReview.save();
-        res.status(201).json({ success: true, message: "Review posted successfully!", review: newReview });
+        res.status(201).json({ success: true, review: newReview });
     } catch (error) {
         console.error("❌ Review submission system failure: ", error);
         res.status(500).json({ error: "Database error saving comments pipeline." });
@@ -238,7 +239,8 @@ app.get('/api/orders/user/:email', async (req, res) => {
             const prod = await Product.findOne({ id: order.productId });
             updatedOrders.push({
                 ...order._doc,
-                productImage: prod ? prod.imageUrl : ''
+                productImage: prod ? prod.imageUrl : '',
+                sellerEmail: prod ? prod.sellerEmail : ''
             });
         }
         res.json(updatedOrders);
@@ -307,9 +309,38 @@ app.get('/api/products/approve/:id', async (req, res) => {
     }
 });
 
-// ==========================================
-// ⚡ UPDATED ORDER PROCESSING PIPELINE
-// ==========================================
+// 🆕 NEW ORDER CANCELLATION ENDPOINT (WITH NODEMAILER ALERTS)
+app.post('/api/orders/cancel', async (req, res) => {
+    const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
+    if (!orderId) return res.status(400).json({ error: "Order ID missing." });
+
+    try {
+        // Remove or update the order document status in MongoDB
+        await Order.deleteOne({ id: orderId });
+
+        const cancelEmailHtml = `
+            <div style="font-family: Arial, sans-serif; border: 1px solid #fda4af; border-radius: 16px; padding: 24px; max-width: 600px; background-color: #0b0f19; color: #f3f4f6;">
+                <h2 style="color: #ef4444; border-bottom: 2px solid #1e293b; padding-bottom: 12px; margin-top: 0;">🚨 Order Cancelled Alert</h2>
+                <p><strong>Order ID:</strong> ${orderId}</p>
+                <p><strong>Product Item:</strong> ${productTitle}</p>
+                <p><strong>Action Executed By:</strong> ${cancelledBy}</p>
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">This order has been safely deleted from the inventory tracking pipeline.</p>
+            </div>
+        `;
+
+        // Send alert emails to Admin & Seller instantly
+        await sendHtmlEmail(ADMIN_EMAIL, `❌ Order Cancelled: ${orderId}`, cancelEmailHtml);
+        if (sellerEmail) {
+            await sendHtmlEmail(sellerEmail.toLowerCase(), `❌ Order Cancelled: ${orderId}`, cancelEmailHtml);
+        }
+
+        res.json({ success: true, message: "Order cancelled and emails dispatched successfully." });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Cancellation system pipeline failed." });
+    }
+});
+
 app.post('/api/orders', async (req, res) => {
     const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
     if (!items || items.length === 0 || !buyerEmail) return res.status(400).json({ error: "Incomplete order details." });
