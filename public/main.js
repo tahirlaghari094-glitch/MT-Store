@@ -1,5 +1,5 @@
 let currentProducts = [];
-let cart = []; // Array objects contain: { ...product, cartItemId, selected: true }
+let cart = []; 
 let currentUser = null;
 let currentAccountType = 'common'; 
 
@@ -201,7 +201,6 @@ function viewDetails(productId) {
 
     let images = p.images && p.images.length > 0 ? p.images : [p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400'];
     
-    // Gallery with Image & Video options
     let mediaThumbnails = images.map((img) => `
         <img src="${img}" onclick="setMediaActive('image', '${img}')" class="w-12 h-12 rounded-lg object-cover border border-gray-800 cursor-pointer hover:border-orange-500 transition shrink-0">
     `).join('');
@@ -410,9 +409,6 @@ async function submitComment(productId) {
     } catch(e) { showNotification("Failed to post review.", "error"); }
 }
 
-// --- CART FUNCTIONS (UPDATED FOR INDIVIDUAL ITEMS) ---
-
-// 1. ADD TO CART - Har click par bilkul alag line item add hoga
 function addToCart(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
@@ -426,7 +422,6 @@ function addToCart(productId) {
     showNotification("Item added to basket.");
 }
 
-// 2. BUY NOW DIRECT
 function buyNowDirect(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
@@ -441,7 +436,6 @@ function buyNowDirect(productId) {
     showNotification("Proceeding directly to checkout.");
 }
 
-// 3. TOGGLE SPECIFIC ITEM SELECTION
 function toggleCartItemSelection(index) {
     if (cart[index] !== undefined) {
         cart[index].selected = !cart[index].selected;
@@ -449,14 +443,12 @@ function toggleCartItemSelection(index) {
     }
 }
 
-// 4. SELECT / DESELECT ALL ITEMS
 function toggleSelectAllCartItems() {
     const hasUnselected = cart.some(item => !item.selected);
     cart.forEach(item => item.selected = hasUnselected);
     renderCart();
 }
 
-// 5. RENDER CART WITH DYNAMIC CALCULATIONS
 function renderCart() {
     const list = document.getElementById('cart-items-list');
     const formBox = document.getElementById('checkout-form-container');
@@ -477,7 +469,6 @@ function renderCart() {
     let totalAmount = 0;
     let selectedCount = 0;
 
-    // Loop through each individual item separately
     cart.forEach((item, index) => {
         if (item.selected) {
             totalAmount += parseFloat(item.price || 0);
@@ -501,7 +492,6 @@ function renderCart() {
         `;
     });
 
-    // Dynamic Price and Count update
     const txtCount = document.getElementById('cart-selected-count');
     const txtTotal = document.getElementById('cart-total-price');
     if (txtCount) txtCount.textContent = `${selectedCount} Item(s)`;
@@ -526,7 +516,6 @@ async function processOrderCheckout() {
         });
         if (res.ok) {
             showNotification("Order pipeline secured! Dispatched confirmation email updates.");
-            // Remove bought items from cart array
             cart = cart.filter(item => !item.selected);
             switchTab('account');
         }
@@ -548,6 +537,15 @@ async function updateProfilePanel() {
     document.getElementById('panel-role').textContent = `${currentAccountType} mode`;
     document.getElementById('panel-username').textContent = currentUser.username || currentUser.email.split('@')[0];
     
+    const avatarContainer = document.getElementById('panel-avatar-container');
+    if (avatarContainer) {
+        if (currentUser.profileImage) {
+            avatarContainer.innerHTML = `<img src="${currentUser.profileImage}" class="w-full h-full object-cover rounded-2xl">`;
+        } else {
+            avatarContainer.innerHTML = `<span id="panel-avatar">${(currentUser.username || currentUser.email)[0].toUpperCase()}</span>`;
+        }
+    }
+
     const headingTitle = document.getElementById('profile-orders-heading');
     const orderContainer = document.getElementById('orders-summary-container');
     if (!orderContainer) return;
@@ -738,6 +736,88 @@ function logout() {
     showNotification("Session cleared. Account logged out.");
     updateProfilePanel();
     switchTab('home');
+}
+
+// SUPPORT & PROFILE UPDATE FUNCTIONS
+async function sendSupportMessage(event) {
+    event.preventDefault();
+    if (!currentUser) return showNotification("Please authenticate session first.", "error");
+
+    const input = document.getElementById('support-msg-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    try {
+        const res = await fetch('/api/support/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userEmail: currentUser.email,
+                userName: currentUser.username || currentUser.email.split('@')[0],
+                message: msg
+            })
+        });
+
+        if (res.ok) {
+            showNotification("Your message was sent to Admin via direct email pipeline!");
+            input.value = '';
+        } else {
+            showNotification("Failed to send message.", "error");
+        }
+    } catch (e) {
+        showNotification("Error routing support message.", "error");
+    }
+}
+
+function toggleEditNameModal() {
+    const box = document.getElementById('edit-name-box');
+    if (box) box.classList.toggle('hidden');
+}
+
+async function saveProfileName() {
+    const newName = document.getElementById('edit-username-input').value.trim();
+    if (!newName || !currentUser) return;
+
+    try {
+        const res = await fetch('/api/users/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentUser.email, username: newName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            currentUser.username = newName;
+            localStorage.setItem('mt_logged_user', JSON.stringify(currentUser));
+            showNotification("Username updated successfully!");
+            toggleEditNameModal();
+            updateProfilePanel();
+        }
+    } catch (e) { showNotification("Failed to update name", "error"); }
+}
+
+async function uploadProfilePicture(input) {
+    if (!input.files || input.files.length === 0 || !currentUser) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+        const base64Img = e.target.result;
+        try {
+            const res = await fetch('/api/users/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentUser.email, profileImage: base64Img })
+            });
+            const data = await res.json();
+            if (data.success) {
+                currentUser.profileImage = base64Img;
+                localStorage.setItem('mt_logged_user', JSON.stringify(currentUser));
+                showNotification("Profile picture updated!");
+                updateProfilePanel();
+            }
+        } catch (err) { showNotification("Failed to update profile picture", "error"); }
+    };
+    reader.readAsDataURL(file);
 }
 
 window.onload = () => {
