@@ -41,16 +41,22 @@
 </head>
 <body class="text-slate-100 min-h-screen pb-24">
 
-    <!-- Top Navigation Header -->
-    <header class="fixed top-0 left-0 right-0 bg-[#070a13]/80 backdrop-blur-xl border-b border-gray-900 z-40 px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-2" onclick="switchTab('home')">
-            <span class="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 cursor-pointer">MT STORE</span>
-            <span id="user-status-badge" class="hidden text-[9px] bg-orange-500/10 border border-orange-500/20 text-orange-400 font-extrabold px-2 py-0.5 rounded-full uppercase"></span>
+    <!-- Top Navigation Header with Search -->
+    <header class="fixed top-0 left-0 right-0 bg-[#070a13]/90 backdrop-blur-xl border-b border-gray-900 z-40 px-4 py-2.5 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 cursor-pointer shrink-0" onclick="switchTab('home')">
+            <span class="text-lg font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500">MT STORE</span>
+            <span id="user-status-badge" class="hidden text-[8px] bg-orange-500/10 border border-orange-500/20 text-orange-400 font-extrabold px-1.5 py-0.5 rounded-full uppercase"></span>
+        </div>
+
+        <!-- Global Search Bar -->
+        <div class="flex-1 max-w-xs relative">
+            <input type="text" id="global-search-input" oninput="filterProductsBySearch(this.value)" placeholder="Search store items..." class="w-full bg-slate-950 border border-gray-800 rounded-full pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]"></i>
         </div>
         
-        <div class="relative">
-            <button onclick="toggleDropdown()" class="w-10 h-10 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition">
-                <i class="fa-solid fa-ellipsis-vertical"></i>
+        <div class="relative shrink-0">
+            <button onclick="toggleDropdown()" class="w-8 h-8 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition">
+                <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
             </button>
             <div id="accountDropdown" class="hidden absolute right-0 mt-2 w-56 bg-slate-950 border border-gray-900 rounded-2xl shadow-2xl p-2 z-50">
                 <button onclick="setAccountType('common')" class="w-full text-left px-4 py-3 text-xs font-bold rounded-xl hover:bg-slate-900 text-gray-300 transition flex items-center gap-2">
@@ -71,11 +77,20 @@
     <main class="max-w-md mx-auto px-4 pt-20">
         
         <!-- 1. HOME VIEW -->
-        <div id="home-view" class="tab-view active space-y-6">
-            <div class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 to-slate-950 border border-gray-850 p-6">
-                <h1 class="text-2xl font-black leading-tight">Premium Multi-Vendor<br><span class="text-orange-400">Store Marketplace</span></h1>
-                <p class="text-xs text-gray-400 mt-2">Browse secure item catalogs directly from verified platform vendors.</p>
+        <div id="home-view" class="tab-view active space-y-4">
+            <div class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 to-slate-950 border border-gray-850 p-5">
+                <h1 class="text-xl font-black leading-tight">Premium Multi-Vendor<br><span class="text-orange-400">Store Marketplace</span></h1>
+                <p class="text-[11px] text-gray-400 mt-1">Browse secure item catalogs directly from verified platform vendors.</p>
             </div>
+
+            <!-- Category Filter Chips -->
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                <button onclick="filterCategory('all')" class="cat-chip bg-orange-500 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="all">All</button>
+                <button onclick="filterCategory('electronics')" class="cat-chip bg-slate-900 text-gray-400 border border-gray-800 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="electronics">Electronics</button>
+                <button onclick="filterCategory('fashion')" class="cat-chip bg-slate-900 text-gray-400 border border-gray-800 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="fashion">Fashion</button>
+                <button onclick="filterCategory('services')" class="cat-chip bg-slate-900 text-gray-400 border border-gray-800 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="services">Services</button>
+            </div>
+
             <div id="product-grid" class="grid grid-cols-2 gap-3"></div>
         </div>
 
@@ -87,15 +102,21 @@
             <div id="product-detail-content" class="bg-slate-900/30 border border-gray-900 rounded-3xl p-4 space-y-6"></div>
         </div>
 
-        <!-- 3. SELLER DASHBOARD VIEW -->
+        <!-- 3. SELLER DASHBOARD VIEW (Upload + Edit Form) -->
         <div id="seller-view" class="tab-view space-y-6">
             <div class="flex bg-slate-950 p-1.5 rounded-2xl border border-gray-900">
-                <button id="btn-sub-upload" onclick="switchSellerSubTab('upload')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950">Add Listing</button>
+                <button id="btn-sub-upload" onclick="switchSellerSubTab('upload')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950">Add / Edit Listing</button>
                 <button id="btn-sub-history" onclick="switchSellerSubTab('history')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-slate-900 text-gray-300">Active Pipeline</button>
             </div>
 
-            <div id="seller-upload-tab" class="tab-view active">
+            <div id="seller-upload-tab" class="tab-view active space-y-3">
+                <div id="edit-mode-banner" class="hidden bg-orange-500/10 border border-orange-500/30 p-3 rounded-2xl flex justify-between items-center text-xs">
+                    <span class="text-orange-400 font-bold"><i class="fa-solid fa-pen-to-square"></i> Editing Existing Item</span>
+                    <button onclick="cancelProductEditMode()" class="text-rose-400 font-black hover:underline text-[10px] uppercase">Cancel Edit</button>
+                </div>
+
                 <form id="product-upload-form" onsubmit="handleProductUpload(event)" class="space-y-4">
+                    <input type="hidden" id="editing-product-id" value="">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Product Title</label>
                         <input type="text" id="p-title" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
@@ -110,7 +131,7 @@
                             <select id="p-category" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
                                 <option value="electronics">Electronics</option>
                                 <option value="fashion">Fashion</option>
-                                <option value="services">Premium Services</option>
+                                <option value="services">Services</option>
                             </select>
                         </div>
                     </div>
@@ -132,7 +153,7 @@
                         <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Email Address Verification</label>
                         <input type="email" id="p-email" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed" readonly>
                     </div>
-                    <button type="submit" class="w-full bg-orange-500 text-slate-950 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">Submit Store Verification Pipeline</button>
+                    <button type="submit" id="btn-submit-listing" class="w-full bg-orange-500 text-slate-950 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">Submit Store Verification Pipeline</button>
                 </form>
             </div>
             
@@ -237,14 +258,12 @@
                 </div>
                 <div class="border-t border-gray-900 my-1"></div>
 
-                <!-- Chat Messages Scroll Container -->
                 <div id="chat-messages-container" class="space-y-3 max-h-72 overflow-y-auto pr-1 no-scrollbar min-h-[160px]">
                     <div class="bg-slate-950 p-3 rounded-2xl border border-gray-900/60 text-xs text-gray-300 leading-relaxed">
                         Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
                     </div>
                 </div>
 
-                <!-- Chat Input Form -->
                 <form onsubmit="sendSupportMessage(event)" class="space-y-3 pt-2 border-t border-gray-900">
                     <div class="flex gap-2">
                         <input type="text" id="support-msg-input" placeholder="Type your query and press Enter..." required class="flex-1 bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
