@@ -71,6 +71,7 @@ const ProductSchema = new mongoose.Schema({
     videoUrl: String,
     comments: [CommentSchema],
     sellerEmail: { type: String, lowercase: true },
+    sellerPhone: String,
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -91,10 +92,9 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
-// LIVE CHAT MESSAGE SCHEMA
 const ChatMessageSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, lowercase: true },
-    sender: { type: String, required: true }, // 'user' or 'admin'
+    sender: { type: String, required: true },
     message: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
 });
@@ -170,48 +170,31 @@ app.post('/api/chat/send', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error sending chat message" }); }
 });
 
-// ADMIN QUICK REPLY PAGE
-app.get('/api/chat/admin-reply-page', (req, res) => {
-    const userEmail = req.query.userEmail;
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Admin Quick Reply</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-        </head>
-        <body class="bg-slate-950 text-white min-h-screen p-4 flex items-center justify-center font-sans">
-            <div class="bg-slate-900 border border-orange-500/30 p-6 rounded-2xl w-full max-w-md space-y-4">
-                <h2 class="text-orange-400 font-bold text-lg">Reply to Chat User</h2>
-                <p class="text-xs text-gray-400">Target User: <span class="text-white font-mono">${userEmail}</span></p>
-                <form action="/api/chat/admin-reply-submit" method="POST" class="space-y-3">
-                    <input type="hidden" name="userEmail" value="${userEmail}">
-                    <textarea name="message" rows="4" placeholder="Type your answer here..." required class="w-full bg-slate-950 border border-gray-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500"></textarea>
-                    <button type="submit" class="w-full bg-orange-500 text-slate-950 font-black py-3 rounded-xl text-xs uppercase">Send Answer to User Chat</button>
-                </form>
-            </div>
-        </body>
-        </html>
-    `);
-});
+// VENDOR INQUIRY ROUTER
+app.post('/api/products/contact-seller', async (req, res) => {
+    const { productId, buyerEmail, buyerName, message } = req.body;
+    if (!productId || !message || !buyerEmail) return res.status(400).json({ error: "Missing required details" });
 
-app.post('/api/chat/admin-reply-submit', async (req, res) => {
-    const { userEmail, message } = req.body;
     try {
-        const chatMsg = new ChatMessage({
-            userEmail: userEmail.toLowerCase(),
-            sender: 'admin',
-            message
-        });
-        await chatMsg.save();
-        res.send(`
-            <body style="background:#070a13; color:#10b981; font-family:sans-serif; text-align:center; padding-top:50px;">
-                <h2>✅ Reply Sent Successfully to Chat Box!</h2>
-                <p style="color:#94a3b8; font-size:14px;">User will now see this answer directly on the website chat.</p>
-            </body>
-        `);
-    } catch(e) { res.status(500).send("Error saving reply"); }
+        const product = await Product.findOne({ id: productId });
+        if (!product || !product.sellerEmail) {
+            return res.status(404).json({ error: "Seller details not found for this product" });
+        }
+
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #f97316;">
+                <h2 style="color: #f97316;">📦 Product Inquiry for: ${product.title}</h2>
+                <p><strong>From Buyer:</strong> ${buyerName || 'Customer'} (${buyerEmail})</p>
+                <blockquote style="background: #0f172a; padding: 12px; border-left: 4px solid #f97316; margin: 15px 0; color: #e2e8f0;">${message}</blockquote>
+                <p style="font-size: 12px; color: #94a3b8;">You can reply directly to this email to respond to the buyer.</p>
+            </div>
+        `;
+
+        await sendHtmlEmail(product.sellerEmail, `Product Question: ${product.title}`, emailHtml, buyerEmail);
+        res.json({ success: true, message: "Inquiry sent directly to seller email!" });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to dispatch question to seller" });
+    }
 });
 
 app.get('/api/products', async (req, res) => {
@@ -228,21 +211,19 @@ app.get('/api/products/seller/:email', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
-// UPDATE / EDIT PRODUCT ENDPOINT
+// UPDATE PRODUCT ENDPOINT
 app.put('/api/products/update/:id', async (req, res) => {
-    const { title, price, description, category, images, videoUrl, sellerEmail } = req.body;
+    const { title, price, description, category, images, videoUrl, sellerEmail, sellerPhone } = req.body;
     try {
         const product = await Product.findOne({ id: req.params.id });
         if (!product) return res.status(404).json({ error: "Product not found" });
-
-        if (product.sellerEmail !== sellerEmail.toLowerCase()) {
-            return res.status(403).json({ error: "Unauthorized product update attempt" });
-        }
 
         if (title) product.title = title;
         if (price) product.price = parseFloat(price);
         if (description) product.description = description;
         if (category) product.category = category;
+        if (sellerEmail) product.sellerEmail = sellerEmail.toLowerCase();
+        if (sellerPhone) product.sellerPhone = sellerPhone;
         if (images && images.length > 0) {
             product.images = images;
             product.imageUrl = images[0];
@@ -261,38 +242,9 @@ app.delete('/api/products/delete/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
-app.post('/api/products/:id/comments', async (req, res) => {
-    const { author, text, rating, media, isPinned } = req.body;
-    try {
-        const product = await Product.findOne({ id: req.params.id });
-        if (!product) return res.status(404).json({ error: "Product not found" });
-
-        product.comments.push({ 
-            author, 
-            text, 
-            rating: rating || 0,
-            media: media || [],
-            isPinned: !!isPinned 
-        });
-        await product.save();
-        res.json({ success: true, comments: product.comments });
-    } catch (e) { res.status(500).json({ error: "Error posting comment" }); }
-});
-
-app.get('/api/orders/user/:email', async (req, res) => {
-    try {
-        const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
-        const records = [];
-        for (let o of userOrders) {
-            const p = await Product.findOne({ id: o.productId });
-            records.push({ ...o._doc, sellerEmail: p ? p.sellerEmail : '' });
-        }
-        res.json(records);
-    } catch (e) { res.status(500).json({ error: "Error" }); }
-});
-
+// 1. ADD NEW PRODUCT (APPROVAL REQUEST TO ADMIN ONLY WITH APPROVE BUTTON & SELLER INFO)
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, images, imageUrl, videoUrl, sellerEmail } = req.body;
+    const { title, price, description, category, images, imageUrl, videoUrl, sellerEmail, sellerPhone } = req.body;
     try {
         const productId = Date.now().toString();
         const imgList = (images && images.length > 0) ? images : [imageUrl];
@@ -306,16 +258,46 @@ app.post('/api/products', async (req, res) => {
             imageUrl: imgList[0],
             images: imgList, 
             videoUrl: videoUrl || null,
-            sellerEmail 
+            sellerEmail: sellerEmail.toLowerCase(),
+            sellerPhone: sellerPhone || 'N/A' 
         });
         await newProduct.save();
 
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
-        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor: ${sellerEmail}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
-        await sendHtmlEmail(ADMIN_EMAIL, `Approve ${title}`, emailHtml);
+        
+        // HTML Template for Admin Verification with Approve Button & Full Details
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #ffffff; border-radius: 12px; border: 1px solid #f97316; max-width: 600px;">
+                <h2 style="color: #f97316; margin-top: 0;">🛡️ New Product Approval Pending</h2>
+                
+                <div style="background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h3 style="color: #38bdf8; margin-top: 0;">👤 Seller Information</h3>
+                    <p style="margin: 5px 0;"><strong>Seller Email:</strong> ${sellerEmail}</p>
+                    <p style="margin: 5px 0;"><strong>Seller Phone:</strong> ${sellerPhone || 'N/A'}</p>
+                </div>
 
-        res.status(201).json({ message: "Dispatched pipeline." });
-    } catch (error) { res.status(500).json({ error: "Error" }); }
+                <div style="background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #38bdf8; margin-top: 0;">📦 Product Details</h3>
+                    <p style="margin: 5px 0;"><strong>Title:</strong> ${title}</p>
+                    <p style="margin: 5px 0;"><strong>Price:</strong> PKR ${price}</p>
+                    <p style="margin: 5px 0;"><strong>Category:</strong> ${category}</p>
+                    <p style="margin: 5px 0;"><strong>Description:</strong> ${description || 'N/A'}</p>
+                    ${imgList[0] ? `<img src="${imgList[0]}" alt="${title}" style="max-width: 200px; border-radius: 8px; margin-top: 10px; border: 1px solid #334155;" />` : ''}
+                </div>
+
+                <div style="text-align: center; margin-top: 25px;">
+                    <a href="${approveUrl}" style="background-color: #10b981; color: #ffffff; padding: 14px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px;">
+                        ✅ Approve & Publish Product Live
+                    </a>
+                </div>
+            </div>
+        `;
+
+        // Notification only sent to ADMIN_EMAIL
+        await sendHtmlEmail(ADMIN_EMAIL, `Review Request: ${title}`, emailHtml);
+
+        res.status(201).json({ message: "Product submitted for admin review." });
+    } catch (error) { res.status(500).json({ error: "Error submitting product" }); }
 });
 
 app.get('/api/products/approve/:id', async (req, res) => {
@@ -324,49 +306,116 @@ app.get('/api/products/approve/:id', async (req, res) => {
         if (!product) return res.send("Not Found");
         product.status = 'approved';
         await product.save();
-        await sendHtmlEmail(product.sellerEmail, `🚀 Item Live Alert!`, `<h2>Your product "${product.title}" is now approved.</h2>`);
-        res.send("<h1>Approved Live!</h1>");
-    } catch (e) { res.send("Error"); }
-});
-
-app.post('/api/orders/cancel', async (req, res) => {
-    const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
-    try {
-        await Order.deleteOne({ id: orderId });
         
-        const cancellationHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444;">
-                <h3 style="color: #ef4444;">❌ Order Cancellation Notice</h3>
-                <p><strong>Order ID Instance:</strong> ${orderId}</p>
-                <p><strong>Product Target:</strong> ${productTitle}</p>
-                <p><strong>Cancelled Processing Request By:</strong> ${cancelledBy}</p>
+        // Notify Seller after approval
+        await sendHtmlEmail(product.sellerEmail, `🚀 Your Product is Live!`, `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #10b981;">
+                <h2 style="color: #10b981;">🎉 Product Approved!</h2>
+                <p>Your product <strong>"${product.title}"</strong> has been approved and is now live on the store!</p>
             </div>
-        `;
-
-        await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
-        
-        if (sellerEmail && sellerEmail.trim() !== '') {
-            await sendHtmlEmail(sellerEmail.trim(), `Cancellation Notice: Order ${orderId}`, cancellationHtml);
-        }
-
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ error: "Pipeline failure" }); }
+        `);
+        res.send("<h1 style='font-family:sans-serif; color:#10b981; text-align:center; padding-top:50px;'>✅ Product Approved & Live!</h1>");
+    } catch (e) { res.send("Error approving product"); }
 });
 
+// 2. NEW ORDERS (NOTIFICATION TO BUYER, SELLER & ADMIN)
 app.post('/api/orders', async (req, res) => {
     const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
     try {
         for (const item of items) {
             const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-            const newOrder = new Order({ id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity, buyerEmail, buyerName, buyerPhone, buyerAddress });
+            const newOrder = new Order({ 
+                id: orderId, 
+                productId: item.id, 
+                title: item.title, 
+                price: item.price, 
+                quantity: item.quantity, 
+                buyerEmail, 
+                buyerName, 
+                buyerPhone, 
+                buyerAddress 
+            });
             await newOrder.save();
 
-            const orderHtml = `<h2>New Order Created: ${orderId}</h2><p>Title: ${item.title}</p>`;
-            await sendHtmlEmail(buyerEmail, `Order Placed`, orderHtml);
-            await sendHtmlEmail(ADMIN_EMAIL, `New Platform Order Request`, orderHtml);
+            // Fetch Seller Email from DB for this specific product
+            const dbProduct = await Product.findOne({ id: item.id });
+            const sellerEmail = dbProduct ? dbProduct.sellerEmail : null;
+
+            const orderHtml = `
+                <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #ffffff; border-radius: 12px; border: 1px solid #f97316; max-width: 600px;">
+                    <h2 style="color: #f97316; margin-top: 0;">🛒 Order Confirmation [${orderId}]</h2>
+                    
+                    <div style="background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #38bdf8; margin-top: 0;">👤 Buyer Information</h3>
+                        <p style="margin: 5px 0;"><strong>Name:</strong> ${buyerName}</p>
+                        <p style="margin: 5px 0;"><strong>Email:</strong> ${buyerEmail}</p>
+                        <p style="margin: 5px 0;"><strong>Phone:</strong> ${buyerPhone}</p>
+                        <p style="margin: 5px 0;"><strong>Address:</strong> ${buyerAddress}</p>
+                    </div>
+
+                    <div style="background: #0f172a; padding: 15px; border-radius: 8px;">
+                        <h3 style="color: #38bdf8; margin-top: 0;">📦 Product Ordered</h3>
+                        <p style="margin: 5px 0;"><strong>Product Title:</strong> ${item.title}</p>
+                        <p style="margin: 5px 0;"><strong>Quantity:</strong> ${item.quantity}</p>
+                        <p style="margin: 5px 0;"><strong>Price per Unit:</strong> PKR ${item.price}</p>
+                        <p style="margin: 5px 0;"><strong>Total Amount:</strong> PKR ${(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+                </div>
+            `;
+
+            // 1. Send to Buyer
+            await sendHtmlEmail(buyerEmail, `Order Placed Successfully: ${orderId}`, orderHtml);
+            // 2. Send to Admin
+            await sendHtmlEmail(ADMIN_EMAIL, `New Store Order [${orderId}]`, orderHtml);
+            // 3. Send to Seller (if available)
+            if (sellerEmail) {
+                await sendHtmlEmail(sellerEmail, `New Order Received for ${item.title} [${orderId}]`, orderHtml);
+            }
         }
         res.json({ message: "Dispatched order pipelines." });
-    } catch (error) { res.status(500).json({ error: "Error" }); }
+    } catch (error) { res.status(500).json({ error: "Error processing orders" }); }
+});
+
+// 3. ORDER CANCELLATION (NOTIFICATION TO SELLER & ADMIN WITH COMPLETE DETAILS)
+app.post('/api/orders/cancel', async (req, res) => {
+    const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
+    try {
+        const orderDetails = await Order.findOne({ id: orderId });
+        await Order.deleteOne({ id: orderId });
+
+        const buyerInfo = orderDetails ? `
+            <p style="margin: 5px 0;"><strong>Buyer Name:</strong> ${orderDetails.buyerName}</p>
+            <p style="margin: 5px 0;"><strong>Buyer Email:</strong> ${orderDetails.buyerEmail}</p>
+            <p style="margin: 5px 0;"><strong>Buyer Phone:</strong> ${orderDetails.buyerPhone}</p>
+        ` : `<p style="margin: 5px 0;">Order history cleared.</p>`;
+
+        const cancellationHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444; max-width: 600px;">
+                <h3 style="color: #ef4444; margin-top: 0;">❌ Order Cancellation Notice</h3>
+                
+                <div style="background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin: 5px 0;"><strong>Order ID:</strong> ${orderId}</p>
+                    <p style="margin: 5px 0;"><strong>Product Title:</strong> ${productTitle}</p>
+                    <p style="margin: 5px 0;"><strong>Cancelled By:</strong> ${cancelledBy || 'User'}</p>
+                </div>
+
+                <div style="background: #0f172a; padding: 15px; border-radius: 8px;">
+                    <h4 style="color: #38bdf8; margin-top: 0;">Buyer Details</h4>
+                    ${buyerInfo}
+                </div>
+            </div>
+        `;
+
+        // 1. Send to Admin
+        await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
+        
+        // 2. Send to Seller
+        if (sellerEmail && sellerEmail.trim() !== '') {
+            await sendHtmlEmail(sellerEmail.trim(), `Order Cancelled Notice: ${orderId}`, cancellationHtml);
+        }
+
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ error: "Pipeline failure" }); }
 });
 
 app.get(/^\/(?!api).*/, (req, res) => { res.sendFile(path.join(rootPath, 'index.html')); });
