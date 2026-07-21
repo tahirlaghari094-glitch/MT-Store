@@ -119,16 +119,16 @@
                     <input type="hidden" id="editing-product-id" value="">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Product Title</label>
-                        <input type="text" id="p-title" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                        <input type="text" id="p-title" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Price (PKR)</label>
-                            <input type="number" id="p-price" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                            <input type="number" id="p-price" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Category</label>
-                            <select id="p-category" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                            <select id="p-category" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
                                 <option value="electronics">Electronics</option>
                                 <option value="fashion">Fashion</option>
                                 <option value="services">Services</option>
@@ -137,7 +137,7 @@
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Description</label>
-                        <textarea id="p-description" rows="3" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition"></textarea>
+                        <textarea id="p-description" rows="3" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white"></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
@@ -149,9 +149,15 @@
                             <input type="file" id="p-video-file" accept="video/*" class="hidden" onchange="previewMedia(this, 'lbl-video')">
                         </label>
                     </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Email Address Verification</label>
-                        <input type="email" id="p-email" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed" readonly>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Email Address</label>
+                            <input type="email" id="p-email" required placeholder="vendor@email.com" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Phone Number</label>
+                            <input type="tel" id="p-phone" required placeholder="03XXXXXXXXX" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
+                        </div>
                     </div>
                     <button type="submit" id="btn-submit-listing" class="w-full bg-orange-500 text-slate-950 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">Submit Store Verification Pipeline</button>
                 </form>
@@ -185,10 +191,10 @@
             <div id="checkout-form-container" class="hidden bg-slate-900/40 border border-gray-900 rounded-3xl p-4 space-y-4">
                 <h4 class="text-xs font-black uppercase text-orange-400 tracking-wider">Cash On Delivery Address</h4>
                 <div class="space-y-3">
-                    <input type="text" id="b-name" placeholder="Full Legal Name" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
-                    <input type="email" id="b-email" placeholder="Billing Email Address" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
-                    <input type="tel" id="b-phone" placeholder="Contact Mobile Number" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
-                    <textarea id="b-address" placeholder="Complete Door Delivery Address Layout" rows="2" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition"></textarea>
+                    <input type="text" id="b-name" placeholder="Full Legal Name" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
+                    <input type="email" id="b-email" placeholder="Billing Email Address" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
+                    <input type="tel" id="b-phone" placeholder="Contact Mobile Number" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
+                    <textarea id="b-address" placeholder="Complete Door Delivery Address Layout" rows="2" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white"></textarea>
                 </div>
                 <button onclick="processOrderCheckout()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs transition uppercase">Buy Selected Products</button>
             </div>
@@ -202,8 +208,8 @@
                     <p class="text-xs text-gray-400">Provide credentials to coordinate multi-vendor dashboard profiles.</p>
                 </div>
                 <div class="space-y-3">
-                    <input type="email" id="auth-email" placeholder="Email Address" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
-                    <input type="password" id="auth-password" placeholder="Password Sequence" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <input type="email" id="auth-email" placeholder="Email Address" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
+                    <input type="password" id="auth-password" placeholder="Password Sequence" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
                 </div>
                 <button onclick="handleAuth()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition">Authenticate Live Session</button>
             </div>
