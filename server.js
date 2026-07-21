@@ -67,6 +67,7 @@ const ProductSchema = new mongoose.Schema({
     category: String,
     imageUrl: String,
     images: [String],
+    videoUrl: String, // Field to store product video
     comments: [CommentSchema],
     sellerEmail: { type: String, lowercase: true },
     status: { type: String, default: 'pending' },
@@ -160,7 +161,7 @@ app.get('/api/orders/user/:email', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, images, imageUrl, sellerEmail } = req.body;
+    const { title, price, description, category, images, imageUrl, videoUrl, sellerEmail } = req.body;
     try {
         const productId = Date.now().toString();
         const imgList = (images && images.length > 0) ? images : [imageUrl];
@@ -173,6 +174,7 @@ app.post('/api/products', async (req, res) => {
             category, 
             imageUrl: imgList[0],
             images: imgList, 
+            videoUrl: videoUrl || null,
             sellerEmail 
         });
         await newProduct.save();
