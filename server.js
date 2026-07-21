@@ -154,7 +154,6 @@ app.post('/api/chat/send', async (req, res) => {
         });
         await chatMsg.save();
 
-        // User ne message bheja to Admin ko reply link wala email jayega
         if (sender !== 'admin') {
             const replyUrl = `${LIVE_DOMAIN}/api/chat/admin-reply-page?userEmail=${encodeURIComponent(userEmail)}`;
             const emailHtml = `
@@ -171,7 +170,7 @@ app.post('/api/chat/send', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error sending chat message" }); }
 });
 
-// ADMIN QUICK REPLY PAGE (Opened from email button)
+// ADMIN QUICK REPLY PAGE
 app.get('/api/chat/admin-reply-page', (req, res) => {
     const userEmail = req.query.userEmail;
     res.send(`
@@ -229,6 +228,32 @@ app.get('/api/products/seller/:email', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
+// UPDATE / EDIT PRODUCT ENDPOINT
+app.put('/api/products/update/:id', async (req, res) => {
+    const { title, price, description, category, images, videoUrl, sellerEmail } = req.body;
+    try {
+        const product = await Product.findOne({ id: req.params.id });
+        if (!product) return res.status(404).json({ error: "Product not found" });
+
+        if (product.sellerEmail !== sellerEmail.toLowerCase()) {
+            return res.status(403).json({ error: "Unauthorized product update attempt" });
+        }
+
+        if (title) product.title = title;
+        if (price) product.price = parseFloat(price);
+        if (description) product.description = description;
+        if (category) product.category = category;
+        if (images && images.length > 0) {
+            product.images = images;
+            product.imageUrl = images[0];
+        }
+        if (videoUrl !== undefined) product.videoUrl = videoUrl;
+
+        await product.save();
+        res.json({ success: true, product });
+    } catch (e) { res.status(500).json({ error: "Update failed" }); }
+});
+
 app.delete('/api/products/delete/:id', async (req, res) => {
     try {
         await Product.deleteOne({ id: req.params.id });
@@ -277,7 +302,7 @@ app.post('/api/products', async (req, res) => {
             title, 
             price: parseFloat(price), 
             description, 
-            category, 
+            category: category || 'electronics', 
             imageUrl: imgList[0],
             images: imgList, 
             videoUrl: videoUrl || null,
