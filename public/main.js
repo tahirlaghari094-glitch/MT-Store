@@ -7,6 +7,9 @@ let commentSelectedRating = 0;
 let commentAttachedFiles = [];
 let chatPollInterval = null;
 
+let activeCategoryFilter = 'all';
+let activeSearchQuery = '';
+
 function showNotification(message, type = 'success') {
     const toast = document.getElementById('toast-notification');
     const msgText = document.getElementById('toast-message');
@@ -71,7 +74,7 @@ function switchSellerSubTab(subTab) {
     } else {
         if(btnHistory) btnHistory.className = "flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950";
         if(btnUpload) btnUpload.className = "flex-1 py-2.5 rounded-xl text-xs font-black transition bg-slate-900 text-gray-300";
-        if(tabHistory) tabHistory.classList.add('active');
+        if(tabHistory) tabHistory.className = "flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950";
         if(tabUpload) tabUpload.classList.remove('active');
     }
 }
@@ -101,7 +104,7 @@ function switchTab(tabName) {
     else if (tabName === 'messages') {
         document.getElementById('messages-view').classList.add('active');
         loadChatMessages();
-        chatPollInterval = setInterval(loadChatMessages, 3000); // Poll live chat every 3 seconds
+        chatPollInterval = setInterval(loadChatMessages, 3000);
     }
 }
 
@@ -109,31 +112,65 @@ async function loadProducts() {
     try {
         const response = await fetch('/api/products');
         currentProducts = await response.json();
-        const grid = document.getElementById('product-grid');
-        if (!grid) return;
-        grid.innerHTML = '';
-        if(currentProducts.length === 0) {
-            grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No active items live.</p>`;
-            return;
-        }
-        currentProducts.forEach(product => {
-            const mainImg = (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400');
-            const hasVideoBadge = product.videoUrl ? `<span class="absolute top-2 right-2 bg-orange-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow"><i class="fa-solid fa-play text-[7px]"></i> VIDEO</span>` : '';
-            
-            grid.innerHTML += `
-                <div class="relative bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
-                    ${hasVideoBadge}
-                    <img src="${mainImg}" alt="${product.title}" class="w-full h-36 object-cover">
-                    <div class="p-3">
-                        <h3 class="font-extrabold text-xs truncate text-white">${product.title}</h3>
-                        <div class="flex items-center justify-between mt-2">
-                            <span class="text-xs font-black text-orange-400">PKR ${product.price}</span>
-                        </div>
+        renderFilteredProducts();
+    } catch (e) {}
+}
+
+function renderFilteredProducts() {
+    const grid = document.getElementById('product-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    let filtered = currentProducts.filter(p => {
+        const matchesCategory = activeCategoryFilter === 'all' || (p.category && p.category.toLowerCase() === activeCategoryFilter.toLowerCase());
+        const query = activeSearchQuery.toLowerCase().trim();
+        const matchesSearch = !query || p.title.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query)) || (p.category && p.category.toLowerCase().includes(query));
+        return matchesCategory && matchesSearch;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No items found.</p>`;
+        return;
+    }
+
+    filtered.forEach(product => {
+        const mainImg = (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400');
+        const hasVideoBadge = product.videoUrl ? `<span class="absolute top-2 right-2 bg-orange-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow"><i class="fa-solid fa-play text-[7px]"></i> VIDEO</span>` : '';
+        
+        grid.innerHTML += `
+            <div class="relative bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
+                ${hasVideoBadge}
+                <img src="${mainImg}" alt="${product.title}" class="w-full h-36 object-cover">
+                <div class="p-3">
+                    <h3 class="font-extrabold text-xs truncate text-white">${product.title}</h3>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-xs font-black text-orange-400">PKR ${product.price}</span>
                     </div>
                 </div>
-            `;
-        });
-    } catch (e) {}
+            </div>
+        `;
+    });
+}
+
+function filterCategory(cat) {
+    activeCategoryFilter = cat;
+    document.querySelectorAll('.cat-chip').forEach(btn => {
+        if (btn.dataset.cat === cat) {
+            btn.className = "cat-chip bg-orange-500 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition";
+        } else {
+            btn.className = "cat-chip bg-slate-900 text-gray-400 border border-gray-800 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition";
+        }
+    });
+    renderFilteredProducts();
+}
+
+function filterProductsBySearch(query) {
+    activeSearchQuery = query;
+    if (document.getElementById('home-view').classList.contains('active')) {
+        renderFilteredProducts();
+    } else {
+        switchTab('home');
+    }
 }
 
 function setMediaActive(type, src) {
@@ -579,6 +616,9 @@ async function updateProfilePanel() {
             }
             items.forEach(p => {
                 const displayImg = (p.images && p.images.length > 0) ? p.images[0] : (p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100');
+                const escapedTitle = (p.title || '').replace(/'/g, "\\'");
+                const escapedDesc = (p.description || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
+
                 orderContainer.innerHTML += `
                     <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center gap-2 mt-2">
                         <div class="min-w-0 flex-grow flex items-center gap-3">
@@ -589,9 +629,14 @@ async function updateProfilePanel() {
                                 <span class="text-[8px] px-2 py-0.5 rounded bg-slate-900 border border-gray-800 text-gray-400 uppercase font-bold">${p.status}</span>
                             </div>
                         </div>
-                        <button onclick="deleteProductItem('${p.id}')" class="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/20 font-black p-2 rounded-xl transition shrink-0">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                        </button>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="startEditingProduct('${p.id}', '${escapedTitle}', '${p.price}', '${escapedDesc}', '${p.category || 'electronics'}')" class="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/20 font-black p-2 rounded-xl transition">
+                                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                            </button>
+                            <button onclick="deleteProductItem('${p.id}')" class="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/20 font-black p-2 rounded-xl transition">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
             });
@@ -621,8 +666,39 @@ async function updateProfilePanel() {
 }
 
 function openProductUploadForm() {
+    cancelProductEditMode();
     switchTab('seller');
     switchSellerSubTab('upload');
+}
+
+function startEditingProduct(id, title, price, description, category) {
+    document.getElementById('editing-product-id').value = id;
+    document.getElementById('p-title').value = title;
+    document.getElementById('p-price').value = price;
+    document.getElementById('p-description').value = description;
+    document.getElementById('p-category').value = category || 'electronics';
+    if (currentUser) document.getElementById('p-email').value = currentUser.email;
+
+    const banner = document.getElementById('edit-mode-banner');
+    if (banner) banner.classList.remove('hidden');
+
+    const submitBtn = document.getElementById('btn-submit-listing');
+    if (submitBtn) submitBtn.textContent = "Update Product Listing";
+
+    switchTab('seller');
+    switchSellerSubTab('upload');
+}
+
+function cancelProductEditMode() {
+    document.getElementById('editing-product-id').value = "";
+    document.getElementById('product-upload-form').reset();
+    if (currentUser) document.getElementById('p-email').value = currentUser.email;
+
+    const banner = document.getElementById('edit-mode-banner');
+    if (banner) banner.classList.add('hidden');
+
+    const submitBtn = document.getElementById('btn-submit-listing');
+    if (submitBtn) submitBtn.textContent = "Submit Store Verification Pipeline";
 }
 
 async function cancelUserOrder(orderId, productTitle, sellerEmail) {
@@ -655,6 +731,7 @@ async function handleProductUpload(event) {
     event.preventDefault();
     if (!currentUser) return showNotification("Please authenticate session first.", "error");
 
+    const editingId = document.getElementById('editing-product-id').value;
     const title = document.getElementById('p-title').value;
     const price = document.getElementById('p-price').value;
     const description = document.getElementById('p-description').value;
@@ -673,8 +750,6 @@ async function handleProductUpload(event) {
             });
             imagesBase64.push(b64);
         }
-    } else {
-        imagesBase64.push("https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400");
     }
 
     let videoBase64 = null;
@@ -688,28 +763,60 @@ async function handleProductUpload(event) {
     }
 
     try {
-        const res = await fetch('/api/products', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                title, 
-                price, 
-                description, 
-                category, 
-                images: imagesBase64, 
-                imageUrl: imagesBase64[0],
-                videoUrl: videoBase64,
-                sellerEmail: currentUser.email 
-            })
-        });
-        if(res.ok) {
-            showNotification("Product listing uploaded for admin review pipeline processing.");
-            document.getElementById('product-upload-form').reset();
-            document.getElementById('lbl-images').textContent = "Select Product Images";
-            document.getElementById('lbl-video').textContent = "Attach Item Video";
-            switchTab('account');
+        if (editingId) {
+            // EDIT PRODUCT REQUEST
+            const payload = {
+                title,
+                price,
+                description,
+                category,
+                sellerEmail: currentUser.email
+            };
+            if (imagesBase64.length > 0) payload.images = imagesBase64;
+            if (videoBase64) payload.videoUrl = videoBase64;
+
+            const res = await fetch(`/api/products/update/${editingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showNotification("Product listing updated successfully!");
+                cancelProductEditMode();
+                switchTab('account');
+            } else {
+                showNotification("Failed to update product.", "error");
+            }
+        } else {
+            // NEW PRODUCT REQUEST
+            if (imagesBase64.length === 0) {
+                imagesBase64.push("https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400");
+            }
+
+            const res = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    title, 
+                    price, 
+                    description, 
+                    category, 
+                    images: imagesBase64, 
+                    imageUrl: imagesBase64[0],
+                    videoUrl: videoBase64,
+                    sellerEmail: currentUser.email 
+                })
+            });
+            if(res.ok) {
+                showNotification("Product listing uploaded for admin review pipeline processing.");
+                cancelProductEditMode();
+                switchTab('account');
+            }
         }
-    } catch(e) {}
+    } catch(e) {
+        showNotification("Product submit error", "error");
+    }
 }
 
 async function handleAuth() {
