@@ -224,7 +224,7 @@
             </div>
         </div>
 
-        <!-- 6. MESSAGES VIEW -->
+        <!-- 6. MESSAGES / LIVE CHAT VIEW -->
         <div id="messages-view" class="tab-view space-y-6">
             <h2 class="text-xl font-black">Support Channels</h2>
             <div id="central-command-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4">
@@ -235,13 +235,17 @@
                         <p class="text-[9px] text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span> Network Router Online</p>
                     </div>
                 </div>
-                <div class="border-t border-gray-900 my-2"></div>
-                <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900/60 text-xs text-gray-300 leading-relaxed">
-                    Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
+                <div class="border-t border-gray-900 my-1"></div>
+
+                <!-- Chat Messages Scroll Container -->
+                <div id="chat-messages-container" class="space-y-3 max-h-72 overflow-y-auto pr-1 no-scrollbar min-h-[160px]">
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-gray-900/60 text-xs text-gray-300 leading-relaxed">
+                        Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
+                    </div>
                 </div>
 
                 <!-- Chat Input Form -->
-                <form onsubmit="sendSupportMessage(event)" class="space-y-3 pt-2">
+                <form onsubmit="sendSupportMessage(event)" class="space-y-3 pt-2 border-t border-gray-900">
                     <div class="flex gap-2">
                         <input type="text" id="support-msg-input" placeholder="Type your query and press Enter..." required class="flex-1 bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
                         <button type="submit" class="bg-orange-500 text-slate-950 font-black px-4 rounded-xl text-xs hover:bg-orange-600 transition flex items-center justify-center">
