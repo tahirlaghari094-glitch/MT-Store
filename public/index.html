@@ -2,195 +2,309 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MT STORE - Multi Vendor Marketplace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>MT Store - Premium Multi-Vendor Hub</title>
+    <meta name="title" content="MT Store - Premium Multi-Vendor Hub">
+    <meta property="og:site_name" content="MT Store" />
+    <meta property="og:title" content="MT Store - Premium Multi-Vendor Hub" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "MT Store",
+      "alternateName": "MT Store",
+      "url": "https://mt-store-sandy.vercel.app"
+    }
+    </script>
+
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon.png" />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #020617; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #070a13;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tab-view { display: none; }
+        .tab-view.active { display: block; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-20 font-sans antialiased">
+<body class="text-slate-100 min-h-screen pb-24">
 
-    <!-- Header Navigation -->
-    <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-gray-900 px-4 py-3">
-        <div class="max-w-md mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="switchTab('home')">
-                <div class="w-8 h-8 rounded-xl bg-orange-500 text-slate-950 flex items-center justify-center font-black text-sm">
-                    MT
-                </div>
-                <span class="font-black text-lg tracking-wider text-white">STORE</span>
-            </div>
-            <div id="user-avatar-btn" onclick="switchTab('account')" class="cursor-pointer">
-                <div class="w-8 h-8 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-xs font-bold text-gray-400">
-                    <i class="fa-solid fa-user"></i>
-                </div>
+    <!-- Top Navigation Header with Search -->
+    <header class="fixed top-0 left-0 right-0 bg-[#070a13]/90 backdrop-blur-xl border-b border-gray-900 z-40 px-4 py-2.5 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 cursor-pointer shrink-0" onclick="switchTab('home')">
+            <span class="text-lg font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500">MT STORE</span>
+            <span id="user-status-badge" class="hidden text-[8px] bg-orange-500/10 border border-orange-500/20 text-orange-400 font-extrabold px-1.5 py-0.5 rounded-full uppercase"></span>
+        </div>
+
+        <!-- Global Search Bar -->
+        <div class="flex-1 max-w-xs relative">
+            <input type="text" id="global-search-input" oninput="filterProductsBySearch(this.value)" placeholder="Search store items..." class="w-full bg-slate-950 border border-gray-800 rounded-full pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]"></i>
+        </div>
+        
+        <div class="relative shrink-0">
+            <button onclick="toggleDropdown()" class="w-8 h-8 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition">
+                <i class="fa-solid fa-ellipsis-vertical text-xs"></i>
+            </button>
+            <div id="accountDropdown" class="hidden absolute right-0 mt-2 w-56 bg-slate-950 border border-gray-900 rounded-2xl shadow-2xl p-2 z-50">
+                <button onclick="setAccountType('common')" class="w-full text-left px-4 py-3 text-xs font-bold rounded-xl hover:bg-slate-900 text-gray-300 transition flex items-center gap-2">
+                    <i class="fa-solid fa-user text-gray-500"></i> Common Buyer Mode
+                </button>
+                <button onclick="setAccountType('seller')" class="w-full text-left px-4 py-3 text-xs font-bold rounded-xl hover:bg-slate-900 text-orange-400 transition flex items-center gap-2">
+                    <i class="fa-solid fa-shop text-orange-500/70"></i> Become a Seller
+                </button>
+                <div class="border-t border-gray-900 my-1"></div>
+                <button onclick="logout()" class="w-full text-left px-4 py-3 text-xs font-bold rounded-xl hover:bg-rose-500/10 text-rose-400 transition flex items-center gap-2">
+                    <i class="fa-solid fa-power-off"></i> Logout Session
+                </button>
             </div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="max-w-md mx-auto p-4">
+    <main class="max-w-md mx-auto px-4 pt-20">
+        
+        <!-- 1. HOME VIEW -->
+        <div id="home-view" class="tab-view active space-y-4">
+            <div class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 to-slate-950 border border-gray-850 p-5">
+                <h1 class="text-xl font-black leading-tight">Premium Multi-Vendor<br><span class="text-orange-400">Store Marketplace</span></h1>
+                <p class="text-[11px] text-gray-400 mt-1">Browse secure item catalogs directly from verified platform vendors.</p>
+            </div>
 
-        <!-- Notification Toast -->
-        <div id="notification-toast" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-orange-500 text-white text-xs px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2">
-            <i class="fa-solid fa-circle-info text-orange-500" id="toast-icon"></i>
-            <span id="toast-msg">Notification message</span>
+            <!-- Category Filter Chips -->
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                <button onclick="filterCategory('all')" class="cat-chip bg-orange-500 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="all">All</button>
+                <button onclick="filterCategory('electronics')" class="cat-chip bg-slate-900 text-gray-400 border border-gray-800 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="electronics">Electronics</button>
+                <button onclick="filterCategory('fashion')" class="cat-chip bg-slate-900 text-gray-400 border border-gray-800 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="fashion">Fashion</button>
+                <button onclick="filterCategory('services')" class="cat-chip bg-slate-900 text-gray-400 border border-gray-800 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shrink-0 transition" data-cat="services">Services</button>
+            </div>
+
+            <div id="product-grid" class="grid grid-cols-2 gap-3"></div>
         </div>
 
-        <!-- TAB 1: HOME / CATALOG -->
-        <section id="tab-home" class="tab-content space-y-4">
-            <!-- Search & Filters -->
-            <div class="flex gap-2">
-                <div class="relative flex-1">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-xs text-gray-500"></i>
-                    <input type="text" id="search-input" onkeyup="filterProducts()" placeholder="Search marketplace..." class="w-full bg-slate-900 border border-gray-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:border-orange-500 outline-none">
-                </div>
-                <select id="category-filter" onchange="filterProducts()" class="bg-slate-900 border border-gray-800 rounded-xl px-3 py-2.5 text-xs text-gray-300 outline-none">
-                    <option value="all">All Items</option>
-                    <option value="electronics">Electronics</option>
-                    <option value="fashion">Fashion</option>
-                    <option value="services">Services</option>
-                </select>
-            </div>
-
-            <!-- Product Grid -->
-            <div id="product-grid" class="grid grid-cols-2 gap-3">
-                <!-- Products dynamically rendered here -->
-            </div>
-        </section>
-
-        <!-- TAB 2: PRODUCT DETAIL PAGE -->
-        <section id="tab-details" class="tab-content hidden space-y-4">
-            <button onclick="switchTab('home')" class="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 font-semibold">
-                <i class="fa-solid fa-arrow-left"></i> Back to Catalog
+        <!-- 2. PRODUCT DETAILS VIEW -->
+        <div id="detail-view" class="tab-view space-y-6">
+            <button onclick="switchTab('home')" class="inline-flex items-center gap-2 text-xs text-gray-400 font-bold bg-slate-900 px-4 py-2 rounded-full border border-gray-800">
+                <i class="fa-solid fa-arrow-left"></i> Back to Products
             </button>
-            <div id="detail-container">
-                <!-- Dynamic Detail Content -->
-            </div>
-        </section>
+            <div id="product-detail-content" class="bg-slate-900/30 border border-gray-900 rounded-3xl p-4 space-y-6"></div>
+        </div>
 
-        <!-- TAB 3: LIVE MESSAGES / CHAT -->
-        <section id="tab-messages" class="tab-content hidden space-y-4">
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-                <i class="fa-solid fa-comments text-orange-500"></i> Direct Messages & Inquiries
-            </h2>
-            <div id="chat-box" class="bg-slate-900 border border-gray-800 rounded-2xl p-4 h-80 overflow-y-auto space-y-3 flex flex-col">
-                <div class="text-center text-xs text-gray-500 my-auto">Select product contact or start message conversation below.</div>
+        <!-- 3. SELLER DASHBOARD VIEW (Upload + Edit Form) -->
+        <div id="seller-view" class="tab-view space-y-6">
+            <div class="flex bg-slate-950 p-1.5 rounded-2xl border border-gray-900">
+                <button id="btn-sub-upload" onclick="switchSellerSubTab('upload')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950">Add / Edit Listing</button>
+                <button id="btn-sub-history" onclick="switchSellerSubTab('history')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-slate-900 text-gray-300">Active Pipeline</button>
             </div>
-            <form onsubmit="sendSupportMessage(event)" class="flex gap-2">
-                <input type="text" id="support-msg-input" placeholder="Type your inquiry or message..." required class="flex-1 bg-slate-900 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white focus:border-orange-500 outline-none">
-                <button type="submit" class="bg-orange-500 text-slate-950 font-bold px-4 py-3 rounded-xl text-xs uppercase tracking-wider">Send</button>
-            </form>
-        </section>
 
-        <!-- TAB 4: ACCOUNT / SELLER VENDOR TAB -->
-        <section id="tab-account" class="tab-content hidden space-y-4">
-            <!-- Auth Form if not logged in -->
-            <div id="auth-section" class="bg-slate-900 border border-gray-800 rounded-2xl p-5 space-y-4">
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Session Authentication</h3>
-                <form onsubmit="handleAuth(event)" class="space-y-3">
-                    <input type="email" id="auth-email" placeholder="Your Email Address" required class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white focus:border-orange-500 outline-none">
-                    <input type="text" id="auth-name" placeholder="Full Name or Username" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white focus:border-orange-500 outline-none">
-                    <button type="submit" class="w-full bg-orange-500 text-slate-950 font-bold py-3 rounded-xl text-xs uppercase tracking-wider">Authenticate Session</button>
+            <div id="seller-upload-tab" class="tab-view active space-y-3">
+                <div id="edit-mode-banner" class="hidden bg-orange-500/10 border border-orange-500/30 p-3 rounded-2xl flex justify-between items-center text-xs">
+                    <span class="text-orange-400 font-bold"><i class="fa-solid fa-pen-to-square"></i> Editing Existing Item</span>
+                    <button onclick="cancelProductEditMode()" class="text-rose-400 font-black hover:underline text-[10px] uppercase">Cancel Edit</button>
+                </div>
+
+                <form id="product-upload-form" onsubmit="handleProductUpload(event)" class="space-y-4">
+                    <input type="hidden" id="editing-product-id" value="">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Product Title</label>
+                        <input type="text" id="p-title" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Price (PKR)</label>
+                            <input type="number" id="p-price" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Category</label>
+                            <select id="p-category" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
+                                <option value="electronics">Electronics</option>
+                                <option value="fashion">Fashion</option>
+                                <option value="services">Services</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Description</label>
+                        <textarea id="p-description" rows="3" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
+                            <span id="lbl-images" class="text-xs text-gray-400 block">Select Product Images</span>
+                            <input type="file" id="p-image-file" multiple accept="image/*" class="hidden" onchange="previewMedia(this, 'lbl-images')">
+                        </label>
+                        <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
+                            <span id="lbl-video" class="text-xs text-gray-400 block">Attach Item Video</span>
+                            <input type="file" id="p-video-file" accept="video/*" class="hidden" onchange="previewMedia(this, 'lbl-video')">
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Email Address Verification</label>
+                        <input type="email" id="p-email" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed" readonly>
+                    </div>
+                    <button type="submit" id="btn-submit-listing" class="w-full bg-orange-500 text-slate-950 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">Submit Store Verification Pipeline</button>
                 </form>
             </div>
+            
+            <div id="seller-history-tab" class="tab-view">
+                <p class="text-xs text-gray-500 text-center py-6">Check your live items under Account profile management view.</p>
+            </div>
+        </div>
 
-            <!-- Seller Dashboard (If logged in) -->
-            <div id="seller-dashboard" class="hidden space-y-4">
-                <div class="bg-slate-900 border border-gray-800 rounded-2xl p-4 flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] uppercase font-bold text-gray-500">Active Vendor Session</p>
-                        <h4 id="user-display-email" class="text-xs font-bold text-white">user@email.com</h4>
-                    </div>
-                    <button onclick="logout()" class="text-xs text-rose-400 hover:underline font-bold">Logout</button>
+        <!-- 4. CHECKOUT BASKET FLOW TAB -->
+        <div id="cart-view" class="tab-view space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-black">Your Checkout Basket</h2>
+                <button onclick="toggleSelectAllCartItems()" class="text-xs text-orange-400 font-bold hover:underline">Select / Deselect All</button>
+            </div>
+
+            <div id="cart-items-list" class="space-y-3"></div>
+
+            <div id="cart-summary-card" class="hidden bg-slate-900/60 border border-gray-800 rounded-2xl p-4 space-y-2">
+                <div class="flex justify-between text-xs text-gray-400 font-bold">
+                    <span>Selected Products:</span>
+                    <span id="cart-selected-count" class="text-white">0 Items</span>
                 </div>
-
-                <!-- Add / Edit Listing Form -->
-                <div class="bg-slate-900 border border-gray-800 rounded-2xl p-5 space-y-4">
-                    <h3 id="form-heading" class="text-xs font-black uppercase text-orange-500 tracking-wider">Create New Listing Pipeline</h3>
-                    
-                    <form id="product-upload-form" onsubmit="handleProductUpload(event)" class="space-y-4">
-                        <input type="hidden" id="editing-product-id" value="">
-                        
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Product Title</label>
-                            <input type="text" id="p-title" required class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Price (PKR)</label>
-                                <input type="number" id="p-price" required class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Category</label>
-                                <select id="p-category" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
-                                    <option value="electronics">Electronics</option>
-                                    <option value="fashion">Fashion</option>
-                                    <option value="services">Services</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Description</label>
-                            <textarea id="p-description" rows="3" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition"></textarea>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
-                                <span id="lbl-images" class="text-xs text-gray-400 block">Select Product Images</span>
-                                <input type="file" id="p-image-file" multiple accept="image/*" class="hidden" onchange="previewMedia(this, 'lbl-images')">
-                            </label>
-                            <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
-                                <span id="lbl-video" class="text-xs text-gray-400 block">Attach Item Video</span>
-                                <input type="file" id="p-video-file" accept="video/*" class="hidden" onchange="previewMedia(this, 'lbl-video')">
-                            </label>
-                        </div>
-                        
-                        <!-- Editable Seller Email & Seller Phone Inputs -->
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Email Address</label>
-                                <input type="email" id="p-email" required placeholder="seller@email.com" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1.5">Seller Phone Number</label>
-                                <input type="tel" id="p-phone" required placeholder="03XXXXXXXXX" class="w-full bg-slate-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none transition text-white">
-                            </div>
-                        </div>
-
-                        <button type="submit" id="btn-submit-listing" class="w-full bg-orange-500 text-slate-950 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">Submit Store Verification Pipeline</button>
-                        <button type="button" id="btn-cancel-edit" onclick="cancelProductEditMode()" class="hidden w-full bg-slate-800 text-gray-300 font-bold py-2.5 rounded-xl text-xs uppercase">Cancel Edit</button>
-                    </form>
+                <div class="flex justify-between text-sm font-black pt-2 border-t border-gray-800">
+                    <span class="text-gray-200">Total Payable Amount:</span>
+                    <span id="cart-total-price" class="text-orange-400">PKR 0</span>
                 </div>
             </div>
-        </section>
+
+            <div id="checkout-form-container" class="hidden bg-slate-900/40 border border-gray-900 rounded-3xl p-4 space-y-4">
+                <h4 class="text-xs font-black uppercase text-orange-400 tracking-wider">Cash On Delivery Address</h4>
+                <div class="space-y-3">
+                    <input type="text" id="b-name" placeholder="Full Legal Name" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <input type="email" id="b-email" placeholder="Billing Email Address" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <input type="tel" id="b-phone" placeholder="Contact Mobile Number" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <textarea id="b-address" placeholder="Complete Door Delivery Address Layout" rows="2" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition"></textarea>
+                </div>
+                <button onclick="processOrderCheckout()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs transition uppercase">Buy Selected Products</button>
+            </div>
+        </div>
+
+        <!-- 5. ACCOUNT PROFILE HUB -->
+        <div id="account-view" class="tab-view space-y-6">
+            <div id="auth-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-6 space-y-4">
+                <div>
+                    <h3 class="text-lg font-black">Secure Account Access</h3>
+                    <p class="text-xs text-gray-400">Provide credentials to coordinate multi-vendor dashboard profiles.</p>
+                </div>
+                <div class="space-y-3">
+                    <input type="email" id="auth-email" placeholder="Email Address" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                    <input type="password" id="auth-password" placeholder="Password Sequence" class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
+                </div>
+                <button onclick="handleAuth()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition">Authenticate Live Session</button>
+            </div>
+
+            <div id="profile-panel" class="hidden space-y-6">
+                <div class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4">
+                    <div class="flex items-center gap-4">
+                        <div class="relative group">
+                            <div class="w-16 h-16 rounded-2xl bg-orange-500 text-slate-950 flex items-center justify-center font-black text-lg shadow-lg overflow-hidden" id="panel-avatar-container">
+                                <span id="panel-avatar">MT</span>
+                            </div>
+                            <label class="absolute -bottom-1 -right-1 bg-slate-950 border border-gray-800 text-orange-400 w-6 h-6 rounded-full flex items-center justify-center text-[10px] cursor-pointer hover:border-orange-500 transition shadow">
+                                <i class="fa-solid fa-camera"></i>
+                                <input type="file" id="profile-img-input" accept="image/*" class="hidden" onchange="uploadProfilePicture(this)">
+                            </label>
+                        </div>
+                        
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <h4 id="panel-username" class="font-black text-sm truncate text-white">User Handle</h4>
+                                <button onclick="toggleEditNameModal()" class="text-xs text-gray-500 hover:text-orange-400 transition"><i class="fa-solid fa-pen-to-square"></i></button>
+                            </div>
+                            <p id="panel-email" class="text-xs text-gray-400 truncate">user@domain.com</p>
+                            <span id="panel-role" class="inline-block text-[9px] bg-slate-950 border border-gray-800 px-2 py-0.5 rounded-md text-orange-400 font-bold uppercase mt-1">Common Mode</span>
+                        </div>
+                    </div>
+
+                    <!-- Edit Name Box -->
+                    <div id="edit-name-box" class="hidden space-y-2 pt-2 border-t border-gray-900">
+                        <input type="text" id="edit-username-input" placeholder="Enter new handle name..." class="w-full bg-slate-950 border border-gray-900 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 text-white">
+                        <button onclick="saveProfileName()" class="bg-orange-500 text-slate-950 font-black px-3 py-1.5 rounded-xl text-[10px] uppercase transition">Save Name</button>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 id="profile-orders-heading" class="text-xs font-black uppercase tracking-wider text-gray-400 flex justify-between items-center w-full"></h3>
+                    <div id="orders-summary-container" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. MESSAGES / LIVE CHAT VIEW -->
+        <div id="messages-view" class="tab-view space-y-6">
+            <h2 class="text-xl font-black">Support Channels</h2>
+            <div id="central-command-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center font-black text-xs">MT</div>
+                    <div>
+                        <h4 class="font-extrabold text-xs text-white">Central Command Support</h4>
+                        <p class="text-[9px] text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span> Network Router Online</p>
+                    </div>
+                </div>
+                <div class="border-t border-gray-900 my-1"></div>
+
+                <div id="chat-messages-container" class="space-y-3 max-h-72 overflow-y-auto pr-1 no-scrollbar min-h-[160px]">
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-gray-900/60 text-xs text-gray-300 leading-relaxed">
+                        Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
+                    </div>
+                </div>
+
+                <form onsubmit="sendSupportMessage(event)" class="space-y-3 pt-2 border-t border-gray-900">
+                    <div class="flex gap-2">
+                        <input type="text" id="support-msg-input" placeholder="Type your query and press Enter..." required class="flex-1 bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition text-white">
+                        <button type="submit" class="bg-orange-500 text-slate-950 font-black px-4 rounded-xl text-xs hover:bg-orange-600 transition flex items-center justify-center">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
     </main>
 
-    <!-- Bottom Fixed Navigation Bar -->
-    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/90 backdrop-blur-md border-t border-gray-900 py-2">
+    <!-- Toast Popup System -->
+    <div id="toast-notification" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900 border border-transparent text-transparent px-5 py-3 rounded-2xl shadow-xl transition opacity-0 -translate-y-4 pointer-events-none">
+        <i class="fa-solid fa-circle-info text-xs"></i>
+        <span id="toast-message" class="text-xs font-bold">Alert Message Pipeline.</span>
+    </div>
+
+    <!-- Bottom Persistent Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#070a13]/90 backdrop-blur-2xl border-t border-gray-900 z-40 py-2.5">
         <div class="max-w-md mx-auto flex justify-around items-center">
-            <button onclick="switchTab('home')" id="nav-home" class="nav-btn flex flex-col items-center gap-1 text-orange-500">
-                <i class="fa-solid fa-store text-base"></i>
-                <span class="text-[10px] font-bold">Store</span>
+            <button onclick="switchTab('home')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-house text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Home</span>
             </button>
-            <button onclick="switchTab('messages')" id="nav-messages" class="nav-btn flex flex-col items-center gap-1 text-gray-500">
-                <i class="fa-solid fa-comments text-base"></i>
-                <span class="text-[10px] font-bold">Chat</span>
+            <button onclick="switchTab('messages')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-comments text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Message</span>
             </button>
-            <button onclick="switchTab('account')" id="nav-account" class="nav-btn flex flex-col items-center gap-1 text-gray-500">
-                <i class="fa-solid fa-user text-base"></i>
-                <span class="text-[10px] font-bold">Account</span>
+            <button onclick="switchTab('cart')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-cart-shopping text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Cart</span>
+            </button>
+            <button onclick="switchTab('account')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
+                <i class="fa-solid fa-user-gear text-sm group-hover:scale-110 transition"></i>
+                <span class="text-[9px] font-bold">Account</span>
             </button>
         </div>
     </nav>
 
-    <script src="main.js"></script>
+    <script src="/main.js"></script>
 </body>
 </html>
