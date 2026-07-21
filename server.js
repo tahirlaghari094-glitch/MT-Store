@@ -95,7 +95,7 @@ const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 // LIVE CHAT MESSAGE SCHEMA
 const ChatMessageSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, lowercase: true },
-    sellerEmail: { type: String, lowercase: true }, // Added for seller-specific chat tracking
+    sellerEmail: { type: String, lowercase: true },
     sender: { type: String, required: true }, // 'user', 'admin', or 'seller'
     message: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
@@ -149,28 +149,38 @@ app.post('/api/chat/send', async (req, res) => {
     if (!message || !userEmail) return res.status(400).json({ error: "Missing data" });
 
     try {
+        // Target email calculation: Seller email tab lagaygi jab message Product Page se ho
+        const targetEmail = (sellerEmail && sellerEmail.trim() !== '') ? sellerEmail.trim() : ADMIN_EMAIL;
+
         const chatMsg = new ChatMessage({
             userEmail: userEmail.toLowerCase(),
-            sellerEmail: sellerEmail ? sellerEmail.toLowerCase() : null,
+            sellerEmail: (targetEmail !== ADMIN_EMAIL) ? targetEmail.toLowerCase() : null,
             sender: sender || 'user',
             message
         });
         await chatMsg.save();
 
         if (sender !== 'admin' && sender !== 'seller') {
-            const targetEmail = (sellerEmail && sellerEmail.trim() !== '') ? sellerEmail.trim() : ADMIN_EMAIL;
+            const isSellerQuery = targetEmail.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
             const replyUrl = `${LIVE_DOMAIN}/api/chat/admin-reply-page?userEmail=${encodeURIComponent(userEmail)}&sellerEmail=${encodeURIComponent(targetEmail)}`;
             
             const emailHtml = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #f97316;">
-                    <h2 style="color: #f97316;">💬 New Product Query / Chat Message</h2>
+                <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #f97316; max-width: 600px; margin: auto;">
+                    <h2 style="color: #f97316; margin-top: 0;">💬 ${isSellerQuery ? 'New Product Customer Inquiry' : 'New Central Support Message'}</h2>
                     <p style="color: #cbd5e1; font-size: 13px;"><strong>From User:</strong> ${userName || userEmail}</p>
                     ${productTitle ? `<p style="color: #38bdf8; font-size: 13px;"><strong>Product Inquired:</strong> ${productTitle}</p>` : ''}
-                    <blockquote style="background: #0f172a; padding: 12px; border-left: 4px solid #f97316; margin: 15px 0; color: #e2e8f0;">${message}</blockquote>
-                    <a href="${replyUrl}" style="display: inline-block; background: #f97316; color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px;">Type Answer / Reply Directly</a>
+                    <blockquote style="background: #0f172a; padding: 12px; border-left: 4px solid #f97316; margin: 15px 0; color: #e2e8f0; border-radius: 4px;">${message}</blockquote>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="${replyUrl}" style="display: inline-block; background: #f97316; color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold; text-decoration: none;">Type Answer / Reply Directly</a>
+                    </div>
                 </div>
             `;
-            await sendHtmlEmail(targetEmail, `Product Query from ${userName || userEmail}`, emailHtml, userEmail);
+
+            const subject = isSellerQuery 
+                ? `[Product Inquiry] New question about "${productTitle || 'your item'}"` 
+                : `[Support Query] Message from ${userName || userEmail}`;
+
+            await sendHtmlEmail(targetEmail, subject, emailHtml, userEmail);
         }
 
         res.json({ success: true, chatMsg });
@@ -186,7 +196,7 @@ app.get('/api/chat/admin-reply-page', (req, res) => {
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Quick Reply to Customer</title>
+            <title>Reply to Customer</title>
             <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-slate-950 text-white min-h-screen p-4 flex items-center justify-center font-sans">
@@ -324,7 +334,7 @@ app.post('/api/products', async (req, res) => {
         const mainImg = imgList[0] || 'https://via.placeholder.com/150';
         
         const emailHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #f97316; max-w: 600px; margin: auto;">
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #f97316; max-width: 600px; margin: auto;">
                 <h2 style="color: #f97316; margin-top: 0;">📦 New Product Approval Request</h2>
                 <div style="background-color: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                     <img src="${mainImg}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 10px; display: block;" />
@@ -368,7 +378,7 @@ app.post('/api/orders/cancel', async (req, res) => {
         await Order.deleteOne({ id: orderId });
         
         const cancellationHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444; max-w: 600px; margin: auto;">
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444; max-width: 600px; margin: auto;">
                 <h3 style="color: #ef4444; margin-top: 0;">❌ Order Cancellation Notice</h3>
                 <div style="background-color: #0f172a; padding: 15px; border-radius: 8px;">
                     <p style="margin: 5px 0; font-size: 14px;"><strong>Order ID:</strong> ${orderId}</p>
@@ -401,7 +411,7 @@ app.post('/api/orders', async (req, res) => {
             const sellerEmail = (dbProduct && dbProduct.sellerEmail) ? dbProduct.sellerEmail : item.sellerEmail;
 
             const orderHtml = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #f97316; max-w: 600px; margin: auto;">
+                <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #f97316; max-width: 600px; margin: auto;">
                     <h2 style="color: #f97316; margin-top: 0;">🛒 Order Notification</h2>
                     <p style="font-size: 14px; color: #cbd5e1;">Order <strong>${orderId}</strong> has been created successfully.</p>
                     
