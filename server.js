@@ -9,7 +9,7 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 const PORT = process.env.PORT || 5000;
 const ADMIN_EMAIL = 'lagharitahir08@gmail.com';
-const LIVE_DOMAIN = 'https://mt-store-sandy.vercel.app';
+const LIVE_DOMAIN = process.env.LIVE_DOMAIN || 'https://mt-store-sandy.vercel.app';
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -91,6 +91,15 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
+// LIVE CHAT MESSAGE SCHEMA
+const ChatMessageSchema = new mongoose.Schema({
+    userEmail: { type: String, required: true, lowercase: true },
+    sender: { type: String, required: true }, // 'user' or 'admin'
+    message: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+const ChatMessage = mongoose.models.ChatMessage || mongoose.model('ChatMessage', ChatMessageSchema);
+
 // STATIC FILES ROUTER MIDDLEWARE
 const rootPath = process.cwd();
 app.use(express.static(rootPath));
@@ -125,26 +134,85 @@ app.post('/api/users/update-profile', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Profile update error" }); }
 });
 
-app.post('/api/support/message', async (req, res) => {
-    const { userEmail, userName, message } = req.body;
-    if (!message || !userEmail) return res.status(400).json({ error: "Missing required fields" });
+// LIVE CHAT ENDPOINTS
+app.get('/api/chat/messages/:userEmail', async (req, res) => {
+    try {
+        const messages = await ChatMessage.find({ userEmail: req.params.userEmail.toLowerCase() }).sort({ createdAt: 1 });
+        res.json(messages);
+    } catch (e) { res.status(500).json({ error: "Error loading chat" }); }
+});
+
+app.post('/api/chat/send', async (req, res) => {
+    const { userEmail, sender, message, userName } = req.body;
+    if (!message || !userEmail) return res.status(400).json({ error: "Missing data" });
 
     try {
-        const emailHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #f97316;">
-                <h2 style="color: #f97316;">📩 New Support Query from MT Store</h2>
-                <p><strong>User Name:</strong> ${userName || 'N/A'}</p>
-                <p><strong>User Email:</strong> ${userEmail}</p>
-                <hr style="border-color: #334155; margin: 15px 0;">
-                <p style="font-size: 14px; line-height: 1.6;"><strong>Message:</strong></p>
-                <blockquote style="background: #0f172a; padding: 12px; border-left: 4px solid #f97316; margin: 0; color: #e2e8f0;">${message}</blockquote>
-                <p style="margin-top: 15px; font-size: 12px; color: #94a3b8;">* Reply directly to this email to respond back to the user.</p>
-            </div>
-        `;
+        const chatMsg = new ChatMessage({
+            userEmail: userEmail.toLowerCase(),
+            sender: sender || 'user',
+            message
+        });
+        await chatMsg.save();
 
-        await sendHtmlEmail(ADMIN_EMAIL, `Support Inquiry from ${userName || userEmail}`, emailHtml, userEmail);
-        res.json({ success: true, message: "Support query dispatched to Admin." });
-    } catch (e) { res.status(500).json({ error: "Support message routing error" }); }
+        // User ne message bheja to Admin ko reply link wala email jayega
+        if (sender !== 'admin') {
+            const replyUrl = `${LIVE_DOMAIN}/api/chat/admin-reply-page?userEmail=${encodeURIComponent(userEmail)}`;
+            const emailHtml = `
+                <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #f97316;">
+                    <h2 style="color: #f97316;">💬 New Live Chat Message from ${userName || userEmail}</h2>
+                    <blockquote style="background: #0f172a; padding: 12px; border-left: 4px solid #f97316; margin: 15px 0; color: #e2e8f0;">${message}</blockquote>
+                    <a href="${replyUrl}" style="display: inline-block; background: #f97316; color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px;">Type Answer / Reply Directly</a>
+                </div>
+            `;
+            await sendHtmlEmail(ADMIN_EMAIL, `Support Query from ${userName || userEmail}`, emailHtml, userEmail);
+        }
+
+        res.json({ success: true, chatMsg });
+    } catch (e) { res.status(500).json({ error: "Error sending chat message" }); }
+});
+
+// ADMIN QUICK REPLY PAGE (Opened from email button)
+app.get('/api/chat/admin-reply-page', (req, res) => {
+    const userEmail = req.query.userEmail;
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Admin Quick Reply</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-slate-950 text-white min-h-screen p-4 flex items-center justify-center font-sans">
+            <div class="bg-slate-900 border border-orange-500/30 p-6 rounded-2xl w-full max-w-md space-y-4">
+                <h2 class="text-orange-400 font-bold text-lg">Reply to Chat User</h2>
+                <p class="text-xs text-gray-400">Target User: <span class="text-white font-mono">${userEmail}</span></p>
+                <form action="/api/chat/admin-reply-submit" method="POST" class="space-y-3">
+                    <input type="hidden" name="userEmail" value="${userEmail}">
+                    <textarea name="message" rows="4" placeholder="Type your answer here..." required class="w-full bg-slate-950 border border-gray-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500"></textarea>
+                    <button type="submit" class="w-full bg-orange-500 text-slate-950 font-black py-3 rounded-xl text-xs uppercase">Send Answer to User Chat</button>
+                </form>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+app.post('/api/chat/admin-reply-submit', async (req, res) => {
+    const { userEmail, message } = req.body;
+    try {
+        const chatMsg = new ChatMessage({
+            userEmail: userEmail.toLowerCase(),
+            sender: 'admin',
+            message
+        });
+        await chatMsg.save();
+        res.send(`
+            <body style="background:#070a13; color:#10b981; font-family:sans-serif; text-align:center; padding-top:50px;">
+                <h2>✅ Reply Sent Successfully to Chat Box!</h2>
+                <p style="color:#94a3b8; font-size:14px;">User will now see this answer directly on the website chat.</p>
+            </body>
+        `);
+    } catch(e) { res.status(500).send("Error saving reply"); }
 });
 
 app.get('/api/products', async (req, res) => {
@@ -268,7 +336,7 @@ app.post('/api/orders', async (req, res) => {
             const newOrder = new Order({ id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity, buyerEmail, buyerName, buyerPhone, buyerAddress });
             await newOrder.save();
 
-            const orderHtml = `2 New Order Created: ${orderId}</h2><p>Title: ${item.title}</p>`;
+            const orderHtml = `<h2>New Order Created: ${orderId}</h2><p>Title: ${item.title}</p>`;
             await sendHtmlEmail(buyerEmail, `Order Placed`, orderHtml);
             await sendHtmlEmail(ADMIN_EMAIL, `New Platform Order Request`, orderHtml);
         }
