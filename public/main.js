@@ -1,11 +1,9 @@
 let currentProducts = [];
-let cart = [];
+let cart = []; // Array objects contain: { ...product, selected: true }
 let currentUser = null;
 let currentAccountType = 'common'; 
 
-// Star rating state for comment submission
 let commentSelectedRating = 0;
-// Files attached to review/comment
 let commentAttachedFiles = [];
 
 function showNotification(message, type = 'success') {
@@ -115,11 +113,14 @@ async function loadProducts() {
         }
         currentProducts.forEach(product => {
             const mainImg = (product.images && product.images.length > 0) ? product.images[0] : (product.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400');
+            const hasVideoBadge = product.videoUrl ? `<span class="absolute top-2 right-2 bg-orange-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow"><i class="fa-solid fa-play text-[7px]"></i> VIDEO</span>` : '';
+            
             grid.innerHTML += `
-                <div class="bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
+                <div class="relative bg-slate-900/40 border border-gray-850 rounded-3xl overflow-hidden hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between" onclick="viewDetails('${product.id}')">
+                    ${hasVideoBadge}
                     <img src="${mainImg}" alt="${product.title}" class="w-full h-36 object-cover">
                     <div class="p-3">
-                        <h3 class="font-extrabold text-xs truncate">${product.title}</h3>
+                        <h3 class="font-extrabold text-xs truncate text-white">${product.title}</h3>
                         <div class="flex items-center justify-between mt-2">
                             <span class="text-xs font-black text-orange-400">PKR ${product.price}</span>
                         </div>
@@ -130,31 +131,31 @@ async function loadProducts() {
     } catch (e) {}
 }
 
-function changeMainImage(src) {
-    const mainImgEl = document.getElementById('main-product-img');
-    if(mainImgEl) mainImgEl.src = src;
+function setMediaActive(type, src) {
+    const mediaContainer = document.getElementById('main-product-media-container');
+    if (!mediaContainer) return;
+    if (type === 'video') {
+        mediaContainer.innerHTML = `<video src="${src}" controls autoplay class="object-contain max-h-[220px] rounded-xl w-full max-w-full"></video>`;
+    } else {
+        mediaContainer.innerHTML = `<img src="${src}" class="object-contain max-h-[220px] rounded-xl w-full">`;
+    }
 }
 
-// Star rating selection helper for comment form
 function setCommentRating(val) {
     commentSelectedRating = val;
     for (let i = 1; i <= 5; i++) {
         const starEl = document.getElementById(`comment-star-${i}`);
         if (starEl) {
-            if (i <= val) {
-                starEl.className = "fa-solid fa-star text-amber-400 cursor-pointer text-base hover:scale-110 transition";
-            } else {
-                starEl.className = "fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition";
-            }
+            starEl.className = i <= val 
+                ? "fa-solid fa-star text-amber-400 cursor-pointer text-base hover:scale-110 transition"
+                : "fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition";
         }
     }
 }
 
-// Gallery media preview for review form
 function handleCommentMediaSelection(input) {
     if (!input.files) return;
-    const files = Array.from(input.files);
-    commentAttachedFiles = commentAttachedFiles.concat(files);
+    commentAttachedFiles = commentAttachedFiles.concat(Array.from(input.files));
     renderCommentMediaPreview();
 }
 
@@ -174,7 +175,6 @@ function renderCommentMediaPreview() {
             } else if (file.type.startsWith('video/')) {
                 wrapper.innerHTML = `<video src="${e.target.result}" class="w-full h-full object-cover"></video>`;
             }
-            
             const removeBtn = document.createElement('button');
             removeBtn.className = "absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center font-bold shadow";
             removeBtn.innerHTML = "&times;";
@@ -196,24 +196,33 @@ function viewDetails(productId) {
     const container = document.getElementById('product-detail-content');
     if (!container) return;
 
-    // Reset rating and attachments state on view
     commentSelectedRating = 0;
     commentAttachedFiles = [];
 
     let images = p.images && p.images.length > 0 ? p.images : [p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400'];
     
+    // Gallery with Image & Video options
+    let mediaThumbnails = images.map((img) => `
+        <img src="${img}" onclick="setMediaActive('image', '${img}')" class="w-12 h-12 rounded-lg object-cover border border-gray-800 cursor-pointer hover:border-orange-500 transition shrink-0">
+    `).join('');
+
+    if (p.videoUrl) {
+        mediaThumbnails += `
+            <div onclick="setMediaActive('video', '${p.videoUrl}')" class="w-12 h-12 rounded-lg bg-slate-950 border border-orange-500/50 flex flex-col items-center justify-center text-orange-400 cursor-pointer hover:bg-orange-500 hover:text-slate-950 transition shrink-0">
+                <i class="fa-solid fa-circle-play text-sm"></i>
+                <span class="text-[7px] font-black uppercase mt-0.5">Video</span>
+            </div>
+        `;
+    }
+
     let galleryHTML = `
         <div class="space-y-2">
-            <div class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden border border-gray-900">
-                <img id="main-product-img" src="${images[0]}" class="object-contain max-h-[220px] rounded-xl w-full">
+            <div id="main-product-media-container" class="flex justify-center items-center bg-slate-950/40 rounded-2xl p-4 overflow-hidden border border-gray-900 min-h-[220px]">
+                <img src="${images[0]}" class="object-contain max-h-[220px] rounded-xl w-full">
             </div>
-            ${images.length > 1 ? `
-                <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
-                    ${images.map((img, idx) => `
-                        <img src="${img}" onclick="changeMainImage('${img}')" class="w-12 h-12 rounded-lg object-cover border border-gray-800 cursor-pointer hover:border-orange-500 transition shrink-0">
-                    `).join('')}
-                </div>
-            ` : ''}
+            <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                ${mediaThumbnails}
+            </div>
         </div>
     `;
 
@@ -239,7 +248,6 @@ function viewDetails(productId) {
             </h4>
             
             <div class="space-y-3 bg-slate-950/60 p-3.5 rounded-2xl border border-gray-900">
-                <!-- Interactive Star Rating selection -->
                 <div class="flex items-center justify-between">
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your Rating:</span>
                     <div class="flex items-center gap-1.5">
@@ -253,15 +261,12 @@ function viewDetails(productId) {
 
                 <textarea id="comment-input" rows="2" placeholder="Write a review or comment..." class="w-full bg-slate-950 border border-gray-900 rounded-xl p-3 text-xs outline-none focus:border-orange-500 transition text-white"></textarea>
                 
-                <!-- Pin / Attachment Toolbar -->
                 <div class="flex justify-between items-center flex-wrap gap-2">
                     <div class="flex items-center gap-3">
                         <label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
                             <input type="checkbox" id="comment-pin" class="accent-orange-500 rounded cursor-pointer">
                             <span class="text-[10px] font-bold"><i class="fa-solid fa-thumbtack text-orange-400"></i> Pin</span>
                         </label>
-
-                        <!-- Pin/Attach Media Gallery File Picker Button -->
                         <label class="flex items-center gap-1.5 text-[10px] font-bold text-orange-400 bg-slate-900 border border-gray-800 px-3 py-1.5 rounded-xl cursor-pointer hover:bg-slate-800 transition">
                             <i class="fa-solid fa-paperclip"></i>
                             <span>Attach Media</span>
@@ -272,7 +277,6 @@ function viewDetails(productId) {
                     <button onclick="submitComment('${p.id}')" class="bg-orange-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition">Post Review</button>
                 </div>
 
-                <!-- Live Media Gallery Preview -->
                 <div id="comment-media-preview" class="flex gap-2 overflow-x-auto no-scrollbar pt-1"></div>
             </div>
 
@@ -309,12 +313,8 @@ function renderCommentsList(comments) {
     if (!comments || comments.length === 0) {
         return `<p class="text-[10px] text-gray-500 text-center py-3">No reviews or comments yet.</p>`;
     }
-    
-    // Pinned comments first
     const sorted = [...comments].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
-    
     return sorted.map(c => {
-        // Render Star rating stars
         let starHTML = '';
         if (c.rating && c.rating > 0) {
             starHTML = '<div class="flex items-center gap-0.5 text-amber-400 text-[10px] my-0.5">';
@@ -324,7 +324,6 @@ function renderCommentsList(comments) {
             starHTML += '</div>';
         }
 
-        // Render Media gallery attachment previews
         let mediaHTML = '';
         if (c.media && c.media.length > 0) {
             mediaHTML = `
@@ -366,8 +365,6 @@ async function submitComment(productId) {
     }
 
     const author = currentUser ? currentUser.email : "Anonymous Buyer";
-    
-    // Process media attachments to base64
     const mediaList = [];
     for (const file of commentAttachedFiles) {
         const reader = new FileReader();
@@ -400,81 +397,122 @@ async function submitComment(productId) {
             const data = await res.json();
             showNotification("Review posted successfully!");
             const targetProd = currentProducts.find(p => p.id === productId);
-            if (targetProd) {
-                targetProd.comments = data.comments;
-            }
+            if (targetProd) targetProd.comments = data.comments;
             const commentsContainer = document.getElementById(`comments-list-${productId}`);
-            if (commentsContainer) {
-                commentsContainer.innerHTML = renderCommentsList(data.comments);
-            }
+            if (commentsContainer) commentsContainer.innerHTML = renderCommentsList(data.comments);
 
-            // Reset Form Inputs
             input.value = '';
             if (pinCheckbox) pinCheckbox.checked = false;
             setCommentRating(0);
             commentAttachedFiles = [];
             renderCommentMediaPreview();
         }
-    } catch(e) {
-        showNotification("Failed to post review.", "error");
-    }
+    } catch(e) { showNotification("Failed to post review.", "error"); }
 }
 
 function addToCart(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if(!p) return;
-    cart.push({ ...p, quantity: 1 });
-    showNotification("Item added to basket checkout flow.");
+    const existingIndex = cart.findIndex(c => c.id === productId);
+    if(existingIndex > -1) {
+        cart[existingIndex].quantity += 1;
+    } else {
+        cart.push({ ...p, quantity: 1, selected: true });
+    }
+    showNotification("Item added to basket.");
 }
 
 function buyNowDirect(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if(!p) return;
-    cart = [{ ...p, quantity: 1 }];
+    cart = [{ ...p, quantity: 1, selected: true }];
     switchTab('cart');
     showNotification("Proceeding directly to checkout.");
 }
 
+// TOGGLE ITEM SELECTION IN CART
+function toggleCartItemSelection(index) {
+    if (cart[index]) {
+        cart[index].selected = !cart[index].selected;
+        renderCart();
+    }
+}
+
+function toggleSelectAllCartItems() {
+    const hasUnselected = cart.some(item => !item.selected);
+    cart.forEach(item => item.selected = hasUnselected);
+    renderCart();
+}
+
+// RENDER CART WITH Dynamic CHECKBOXES & CALCULATIONS
 function renderCart() {
     const list = document.getElementById('cart-items-list');
     const formBox = document.getElementById('checkout-form-container');
+    const summaryCard = document.getElementById('cart-summary-card');
     if (!list) return;
+
     list.innerHTML = '';
     if (cart.length === 0) {
         list.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Your cart container is empty.</p>`;
         if(formBox) formBox.classList.add('hidden');
+        if(summaryCard) summaryCard.classList.add('hidden');
         return;
     }
+
     if(formBox) formBox.classList.remove('hidden');
+    if(summaryCard) summaryCard.classList.remove('hidden');
+
+    let totalAmount = 0;
+    let selectedCount = 0;
+
     cart.forEach((item, index) => {
+        if(item.selected) {
+            totalAmount += (item.price * item.quantity);
+            selectedCount += item.quantity;
+        }
+
+        const thumb = (item.images && item.images.length > 0) ? item.images[0] : (item.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100');
+
         list.innerHTML += `
-            <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center">
-                <div>
-                    <h4 class="font-extrabold text-xs text-white">${item.title}</h4>
-                    <p class="text-[10px] text-orange-400 font-bold">PKR ${item.price}</p>
+            <div class="bg-slate-950 p-3.5 rounded-2xl border ${item.selected ? 'border-orange-500/50 bg-orange-500/5' : 'border-gray-900'} flex items-center gap-3 transition">
+                <input type="checkbox" ${item.selected ? 'checked' : ''} onchange="toggleCartItemSelection(${index})" class="accent-orange-500 w-4 h-4 cursor-pointer rounded">
+                <img src="${thumb}" class="w-12 h-12 rounded-xl object-cover border border-gray-800 shrink-0">
+                <div class="min-w-0 flex-1">
+                    <h4 class="font-extrabold text-xs text-white truncate">${item.title}</h4>
+                    <p class="text-[11px] text-orange-400 font-bold mt-0.5">PKR ${item.price}</p>
                 </div>
-                <button onclick="cart.splice(${index},1); renderCart();" class="text-xs text-rose-400"><i class="fa-solid fa-trash-can"></i></button>
+                <button onclick="cart.splice(${index},1); renderCart();" class="text-xs text-rose-400 hover:text-rose-300 p-2"><i class="fa-solid fa-trash-can"></i></button>
             </div>
         `;
     });
+
+    // Update dynamically calculated payment text
+    const txtCount = document.getElementById('cart-selected-count');
+    const txtTotal = document.getElementById('cart-total-price');
+    if(txtCount) txtCount.textContent = `${selectedCount} Item(s)`;
+    if(txtTotal) txtTotal.textContent = `PKR ${totalAmount.toLocaleString()}`;
 }
 
 async function processOrderCheckout() {
+    const selectedItems = cart.filter(item => item.selected);
+    if(selectedItems.length === 0) return showNotification("Please select at least one product to purchase.", "error");
+
     const name = document.getElementById('b-name').value;
     const email = document.getElementById('b-email').value;
     const phone = document.getElementById('b-phone').value;
     const address = document.getElementById('b-address').value;
-    if(!name || !email || !phone || !address) return showNotification("Fill complete credentials.", "error");
+    if(!name || !email || !phone || !address) return showNotification("Fill complete checkout credentials.", "error");
 
     try {
         const res = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: cart, buyerName: name, buyerEmail: email, buyerPhone: phone, buyerAddress: address })
+            body: JSON.stringify({ items: selectedItems, buyerName: name, buyerEmail: email, buyerPhone: phone, buyerAddress: address })
         });
         if (res.ok) {
             showNotification("Order pipeline secured! Dispatched confirmation email updates.");
-            cart = [];
+            // Remove bought items from cart array
+            cart = cart.filter(item => !item.selected);
             switchTab('account');
         }
     } catch(e) {}
@@ -553,7 +591,7 @@ async function updateProfilePanel() {
                 orderContainer.innerHTML += `
                     <div class="bg-slate-950 p-4 rounded-2xl border border-gray-900 flex justify-between items-center gap-2 mt-2">
                         <div class="min-w-0 flex-grow">
-                            <h5 class="font-extrabold text-xs truncate">${o.title}</h5>
+                            <h5 class="font-extrabold text-xs truncate text-white">${o.title}</h5>
                             <p class="text-[10px] text-gray-400">PKR ${o.price}</p>
                         </div>
                         <button onclick="cancelUserOrder('${o.id}', '${o.title.replace(/'/g, "\\'")}', '${o.sellerEmail || ''}')" class="bg-rose-500/10 hover:bg-rose-500 text-rose-400 border border-rose-500/30 text-[10px] px-3 py-1.5 rounded-xl transition font-bold">Cancel</button>
@@ -578,7 +616,7 @@ async function cancelUserOrder(orderId, productTitle, sellerEmail) {
             body: JSON.stringify({ orderId, productTitle, sellerEmail, cancelledBy: currentUser.email })
         });
         if (res.ok) {
-            showNotification("Order Cancelled. Updates sent to Admin & Seller via system routing.");
+            showNotification("Order Cancelled. Updates sent to Admin & Seller.");
             updateProfilePanel();
         }
     } catch (err) {}
@@ -604,6 +642,7 @@ async function handleProductUpload(event) {
     const description = document.getElementById('p-description').value;
     const category = document.getElementById('p-category').value;
     const imgInput = document.getElementById('p-image-file');
+    const vidInput = document.getElementById('p-video-file');
 
     let imagesBase64 = [];
     if (imgInput.files.length > 0) {
@@ -620,6 +659,16 @@ async function handleProductUpload(event) {
         imagesBase64.push("https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400");
     }
 
+    let videoBase64 = null;
+    if (vidInput.files.length > 0) {
+        const file = vidInput.files[0];
+        const reader = new FileReader();
+        videoBase64 = await new Promise((res) => {
+            reader.onload = (e) => res(e.target.result);
+            reader.readAsDataURL(file);
+        });
+    }
+
     try {
         const res = await fetch('/api/products', {
             method: 'POST',
@@ -631,13 +680,15 @@ async function handleProductUpload(event) {
                 category, 
                 images: imagesBase64, 
                 imageUrl: imagesBase64[0],
+                videoUrl: videoBase64,
                 sellerEmail: currentUser.email 
             })
         });
         if(res.ok) {
             showNotification("Product listing uploaded for admin review pipeline processing.");
             document.getElementById('product-upload-form').reset();
-            document.getElementById('lbl-images').textContent = "Select Product Images (Multiple)";
+            document.getElementById('lbl-images').textContent = "Select Product Images";
+            document.getElementById('lbl-video').textContent = "Attach Item Video";
             switchTab('account');
         }
     } catch(e) {}
