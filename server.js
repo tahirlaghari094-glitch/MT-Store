@@ -53,6 +53,8 @@ const User = mongoose.models.User || mongoose.model('User', UserSchema);
 const CommentSchema = new mongoose.Schema({
     author: String,
     text: String,
+    rating: { type: Number, default: 0 },
+    media: [{ type: { type: String }, url: String }],
     isPinned: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
@@ -128,12 +130,18 @@ app.delete('/api/products/delete/:id', async (req, res) => {
 });
 
 app.post('/api/products/:id/comments', async (req, res) => {
-    const { author, text, isPinned } = req.body;
+    const { author, text, rating, media, isPinned } = req.body;
     try {
         const product = await Product.findOne({ id: req.params.id });
         if (!product) return res.status(404).json({ error: "Product not found" });
 
-        product.comments.push({ author, text, isPinned: !!isPinned });
+        product.comments.push({ 
+            author, 
+            text, 
+            rating: rating || 0,
+            media: media || [],
+            isPinned: !!isPinned 
+        });
         await product.save();
         res.json({ success: true, comments: product.comments });
     } catch (e) { res.status(500).json({ error: "Error posting comment" }); }
