@@ -27,7 +27,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon.png" />
 
-    <!-- Fallback inline SVG Logo (Bina file ke bhi orange MT logo dikhane ke liye) -->
+    <!-- Fallback inline SVG Logo -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23f97316%22/><text y=%22.9em%22 x=%2250%22 text-anchor=%22middle%22 font-size=%2250%22 font-weight=%22900%22 font-family=%22sans-serif%22 fill=%22%23070a13%22>MT</text></svg>" />
 
     <!-- Stylesheets & Fonts -->
@@ -133,7 +133,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
-                            <span id="lbl-images" class="text-xs text-gray-400 block">Select 3 Product Images</span>
+                            <span id="lbl-images" class="text-xs text-gray-400 block">Select Product Images (Multiple)</span>
                             <input type="file" id="p-image-file" multiple accept="image/*" class="hidden" onchange="previewMedia(this, 'lbl-images')">
                         </label>
                         <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
@@ -198,19 +198,19 @@
                     </div>
                 </div>
 
-                <!-- DYNAMIC RENDERING: Your Placed Orders Summary / Your Uploaded Products -->
+                <!-- DYNAMIC RENDERING -->
                 <div class="space-y-3">
                     <h3 id="profile-orders-heading" class="text-xs font-black uppercase tracking-wider text-gray-400 flex justify-between items-center w-full">
-                        <!-- Headings inject dynamically here along with Add Product links in JavaScript -->
+                        <!-- Headings inject dynamically here -->
                     </h3>
                     <div id="orders-summary-container" class="space-y-2">
-                        <!-- Dynamic conditional order elements loop maps securely inside here -->
+                        <!-- Dynamic content maps inside here -->
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 6. MESSAGES TAB VIEW (CENTRAL COMMAND HOUSES ONLY INSIDE HERE) -->
+        <!-- 6. MESSAGES TAB VIEW -->
         <div id="messages-view" class="tab-view space-y-6">
             <h2 class="text-xl font-black">Support Channels</h2>
             
@@ -239,7 +239,7 @@
         <span id="toast-message" class="text-xs font-bold">Alert Message Pipeline.</span>
     </div>
 
-    <!-- Bottom Persistent Floating Navigation Hub -->
+    <!-- Bottom Persistent Navigation Hub -->
     <nav class="fixed bottom-0 left-0 right-0 bg-[#070a13]/90 backdrop-blur-2xl border-t border-gray-900 z-40 py-2.5">
         <div class="max-w-md mx-auto flex justify-around items-center">
             <button onclick="switchTab('home')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
@@ -261,7 +261,7 @@
         </div>
     </nav>
 
-    <!-- App Engine Script Logic Initiation Mapping -->
+    <!-- App Engine Script -->
     <script src="/main.js"></script>
 </body>
 </html>
