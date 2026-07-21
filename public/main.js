@@ -1,5 +1,5 @@
 let currentProducts = [];
-let cart = []; // Array objects contain: { ...product, cartItemId, selected: true }
+let cart = [];
 let currentUser = null;
 let currentAccountType = 'common'; 
 
@@ -22,7 +22,8 @@ function showNotification(message, type = 'success') {
 }
 
 function toggleDropdown() {
-    document.getElementById('accountDropdown').classList.toggle('hidden');
+    const dd = document.getElementById('accountDropdown');
+    if (dd) dd.classList.toggle('hidden');
 }
 
 function previewMedia(input, elementId) {
@@ -45,9 +46,6 @@ function setAccountType(type) {
 
     if(type === 'seller') {
         showNotification("Switched to Seller Dashboard Management.");
-        if (currentUser && document.getElementById('p-email')) {
-            document.getElementById('p-email').value = currentUser.email;
-        }
         switchTab('account');
     } else {
         showNotification("Switched to Common Buyer Account.");
@@ -97,6 +95,7 @@ function switchTab(tabName) {
     }
     else if (tabName === 'messages') {
         document.getElementById('messages-view').classList.add('active');
+        loadMessages();
     }
 }
 
@@ -108,7 +107,7 @@ async function loadProducts() {
         if (!grid) return;
         grid.innerHTML = '';
         if(currentProducts.length === 0) {
-            grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No active items live.</p>`;
+            grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No active products live.</p>`;
             return;
         }
         currentProducts.forEach(product => {
@@ -141,55 +140,6 @@ function setMediaActive(type, src) {
     }
 }
 
-function setCommentRating(val) {
-    commentSelectedRating = val;
-    for (let i = 1; i <= 5; i++) {
-        const starEl = document.getElementById(`comment-star-${i}`);
-        if (starEl) {
-            starEl.className = i <= val 
-                ? "fa-solid fa-star text-amber-400 cursor-pointer text-base hover:scale-110 transition"
-                : "fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition";
-        }
-    }
-}
-
-function handleCommentMediaSelection(input) {
-    if (!input.files) return;
-    commentAttachedFiles = commentAttachedFiles.concat(Array.from(input.files));
-    renderCommentMediaPreview();
-}
-
-function renderCommentMediaPreview() {
-    const previewContainer = document.getElementById('comment-media-preview');
-    if (!previewContainer) return;
-    previewContainer.innerHTML = '';
-
-    commentAttachedFiles.forEach((file, idx) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = "relative w-14 h-14 rounded-xl overflow-hidden border border-gray-800 bg-slate-950 shrink-0";
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            if (file.type.startsWith('image/')) {
-                wrapper.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
-            } else if (file.type.startsWith('video/')) {
-                wrapper.innerHTML = `<video src="${e.target.result}" class="w-full h-full object-cover"></video>`;
-            }
-            const removeBtn = document.createElement('button');
-            removeBtn.className = "absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center font-bold shadow";
-            removeBtn.innerHTML = "&times;";
-            removeBtn.onclick = (event) => {
-                event.stopPropagation();
-                commentAttachedFiles.splice(idx, 1);
-                renderCommentMediaPreview();
-            };
-            wrapper.appendChild(removeBtn);
-        };
-        reader.readAsDataURL(file);
-        previewContainer.appendChild(wrapper);
-    });
-}
-
 function viewDetails(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
@@ -201,7 +151,6 @@ function viewDetails(productId) {
 
     let images = p.images && p.images.length > 0 ? p.images : [p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400'];
     
-    // Gallery with Image & Video options
     let mediaThumbnails = images.map((img) => `
         <img src="${img}" onclick="setMediaActive('image', '${img}')" class="w-12 h-12 rounded-lg object-cover border border-gray-800 cursor-pointer hover:border-orange-500 transition shrink-0">
     `).join('');
@@ -226,6 +175,8 @@ function viewDetails(productId) {
         </div>
     `;
 
+    // Direct Dialer / Phone Link for Vendor Contact
+    const sellerPhoneNum = p.sellerPhone || '03113841402';
     let sellerInfoHTML = `
         <div class="bg-slate-950 border border-gray-900 p-3.5 rounded-2xl flex items-center justify-between">
             <div class="flex items-center gap-3 min-w-0">
@@ -234,55 +185,12 @@ function viewDetails(productId) {
                 </div>
                 <div class="min-w-0">
                     <h5 class="text-xs font-extrabold text-white truncate">${p.sellerEmail || 'Verified Merchant'}</h5>
-                    <p class="text-[9px] text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check text-[8px]"></i> Verified Store Vendor</p>
+                    <p class="text-[9px] text-emerald-400 font-semibold"><i class="fa-solid fa-phone text-[8px]"></i> ${sellerPhoneNum}</p>
                 </div>
             </div>
-            <button onclick="switchTab('messages')" class="bg-slate-900 border border-gray-800 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl text-[10px] font-bold transition shrink-0">Contact</button>
-        </div>
-    `;
-
-    let commentsHTML = `
-        <div class="space-y-3 border-t border-gray-900 pt-4">
-            <h4 class="text-xs font-black uppercase text-gray-400 tracking-wider flex items-center gap-2">
-                <i class="fa-solid fa-comments text-orange-400"></i> Customer Reviews & Q/A
-            </h4>
-            
-            <div class="space-y-3 bg-slate-950/60 p-3.5 rounded-2xl border border-gray-900">
-                <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your Rating:</span>
-                    <div class="flex items-center gap-1.5">
-                        <i id="comment-star-1" onclick="setCommentRating(1)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
-                        <i id="comment-star-2" onclick="setCommentRating(2)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
-                        <i id="comment-star-3" onclick="setCommentRating(3)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
-                        <i id="comment-star-4" onclick="setCommentRating(4)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
-                        <i id="comment-star-5" onclick="setCommentRating(5)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
-                    </div>
-                </div>
-
-                <textarea id="comment-input" rows="2" placeholder="Write a review or comment..." class="w-full bg-slate-950 border border-gray-900 rounded-xl p-3 text-xs outline-none focus:border-orange-500 transition text-white"></textarea>
-                
-                <div class="flex justify-between items-center flex-wrap gap-2">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
-                            <input type="checkbox" id="comment-pin" class="accent-orange-500 rounded cursor-pointer">
-                            <span class="text-[10px] font-bold"><i class="fa-solid fa-thumbtack text-orange-400"></i> Pin</span>
-                        </label>
-                        <label class="flex items-center gap-1.5 text-[10px] font-bold text-orange-400 bg-slate-900 border border-gray-800 px-3 py-1.5 rounded-xl cursor-pointer hover:bg-slate-800 transition">
-                            <i class="fa-solid fa-paperclip"></i>
-                            <span>Attach Media</span>
-                            <input type="file" id="comment-media-input" accept="image/*, video/*" multiple class="hidden" onchange="handleCommentMediaSelection(this)">
-                        </label>
-                    </div>
-
-                    <button onclick="submitComment('${p.id}')" class="bg-orange-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition">Post Review</button>
-                </div>
-
-                <div id="comment-media-preview" class="flex gap-2 overflow-x-auto no-scrollbar pt-1"></div>
-            </div>
-
-            <div id="comments-list-${p.id}" class="space-y-2 pt-2">
-                ${renderCommentsList(p.comments || [])}
-            </div>
+            <a href="tel:${sellerPhoneNum}" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 px-3.5 py-2 rounded-xl text-[10px] font-black transition shrink-0 flex items-center gap-1.5 shadow">
+                <i class="fa-solid fa-phone"></i> Contact
+            </a>
         </div>
     `;
 
@@ -303,116 +211,13 @@ function viewDetails(productId) {
             </div>
 
             ${sellerInfoHTML}
-            ${commentsHTML}
         </div>
     `;
     switchTab('detail');
 }
 
-function renderCommentsList(comments) {
-    if (!comments || comments.length === 0) {
-        return `<p class="text-[10px] text-gray-500 text-center py-3">No reviews or comments yet.</p>`;
-    }
-    const sorted = [...comments].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
-    return sorted.map(c => {
-        let starHTML = '';
-        if (c.rating && c.rating > 0) {
-            starHTML = '<div class="flex items-center gap-0.5 text-amber-400 text-[10px] my-0.5">';
-            for (let i = 1; i <= 5; i++) {
-                starHTML += `<i class="${i <= c.rating ? 'fa-solid' : 'fa-regular'} fa-star"></i>`;
-            }
-            starHTML += '</div>';
-        }
+// --- CART LOGIC ---
 
-        let mediaHTML = '';
-        if (c.media && c.media.length > 0) {
-            mediaHTML = `
-                <div class="flex gap-2 overflow-x-auto no-scrollbar pt-2">
-                    ${c.media.map(m => {
-                        if (m.type === 'image') {
-                            return `<img src="${m.url}" class="w-14 h-14 rounded-lg object-cover border border-gray-800 shrink-0">`;
-                        } else if (m.type === 'video') {
-                            return `<video src="${m.url}" controls class="w-16 h-14 rounded-lg object-cover border border-gray-800 shrink-0"></video>`;
-                        }
-                        return '';
-                    }).join('')}
-                </div>
-            `;
-        }
-
-        return `
-            <div class="bg-slate-950 border ${c.isPinned ? 'border-orange-500/50 bg-orange-500/5' : 'border-gray-900'} p-3 rounded-xl space-y-1 relative">
-                <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-extrabold text-orange-400">${c.author}</span>
-                    <div class="flex items-center gap-2">
-                        ${c.isPinned ? '<span class="text-[8px] bg-orange-500 text-slate-950 px-1.5 py-0.5 rounded font-black uppercase"><i class="fa-solid fa-thumbtack"></i> Pinned</span>' : ''}
-                        <span class="text-[8px] text-gray-500">${new Date(c.createdAt).toLocaleDateString()}</span>
-                    </div>
-                </div>
-                ${starHTML}
-                <p class="text-xs text-gray-300">${c.text}</p>
-                ${mediaHTML}
-            </div>
-        `;
-    }).join('');
-}
-
-async function submitComment(productId) {
-    const input = document.getElementById('comment-input');
-    const pinCheckbox = document.getElementById('comment-pin');
-    if (!input || (!input.value.trim() && commentAttachedFiles.length === 0)) {
-        return showNotification("Please write a comment or attach media first.", "error");
-    }
-
-    const author = currentUser ? currentUser.email : "Anonymous Buyer";
-    const mediaList = [];
-    for (const file of commentAttachedFiles) {
-        const reader = new FileReader();
-        const base64Url = await new Promise((resolve) => {
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
-        });
-        mediaList.push({
-            type: file.type.startsWith('image/') ? 'image' : 'video',
-            url: base64Url
-        });
-    }
-
-    const commentData = {
-        author,
-        text: input.value.trim(),
-        rating: commentSelectedRating,
-        media: mediaList,
-        isPinned: pinCheckbox ? pinCheckbox.checked : false
-    };
-
-    try {
-        const res = await fetch(`/api/products/${productId}/comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(commentData)
-        });
-        
-        if (res.ok) {
-            const data = await res.json();
-            showNotification("Review posted successfully!");
-            const targetProd = currentProducts.find(p => p.id === productId);
-            if (targetProd) targetProd.comments = data.comments;
-            const commentsContainer = document.getElementById(`comments-list-${productId}`);
-            if (commentsContainer) commentsContainer.innerHTML = renderCommentsList(data.comments);
-
-            input.value = '';
-            if (pinCheckbox) pinCheckbox.checked = false;
-            setCommentRating(0);
-            commentAttachedFiles = [];
-            renderCommentMediaPreview();
-        }
-    } catch(e) { showNotification("Failed to post review.", "error"); }
-}
-
-// --- CART FUNCTIONS (UPDATED FOR INDIVIDUAL ITEMS) ---
-
-// 1. ADD TO CART - Har click par bilkul alag line item add hoga
 function addToCart(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
@@ -426,7 +231,6 @@ function addToCart(productId) {
     showNotification("Item added to basket.");
 }
 
-// 2. BUY NOW DIRECT
 function buyNowDirect(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
@@ -441,7 +245,6 @@ function buyNowDirect(productId) {
     showNotification("Proceeding directly to checkout.");
 }
 
-// 3. TOGGLE SPECIFIC ITEM SELECTION
 function toggleCartItemSelection(index) {
     if (cart[index] !== undefined) {
         cart[index].selected = !cart[index].selected;
@@ -449,14 +252,6 @@ function toggleCartItemSelection(index) {
     }
 }
 
-// 4. SELECT / DESELECT ALL ITEMS
-function toggleSelectAllCartItems() {
-    const hasUnselected = cart.some(item => !item.selected);
-    cart.forEach(item => item.selected = hasUnselected);
-    renderCart();
-}
-
-// 5. RENDER CART WITH DYNAMIC CALCULATIONS
 function renderCart() {
     const list = document.getElementById('cart-items-list');
     const formBox = document.getElementById('checkout-form-container');
@@ -477,7 +272,6 @@ function renderCart() {
     let totalAmount = 0;
     let selectedCount = 0;
 
-    // Loop through each individual item separately
     cart.forEach((item, index) => {
         if (item.selected) {
             totalAmount += parseFloat(item.price || 0);
@@ -501,7 +295,6 @@ function renderCart() {
         `;
     });
 
-    // Dynamic Price and Count update
     const txtCount = document.getElementById('cart-selected-count');
     const txtTotal = document.getElementById('cart-total-price');
     if (txtCount) txtCount.textContent = `${selectedCount} Item(s)`;
@@ -525,10 +318,136 @@ async function processOrderCheckout() {
             body: JSON.stringify({ items: selectedItems, buyerName: name, buyerEmail: email, buyerPhone: phone, buyerAddress: address })
         });
         if (res.ok) {
-            showNotification("Order pipeline secured! Dispatched confirmation email updates.");
-            // Remove bought items from cart array
+            showNotification("Order Dispatched! Details sent via email.");
             cart = cart.filter(item => !item.selected);
             switchTab('account');
+        }
+    } catch(e) {}
+}
+
+// --- MESSAGES / HELP & SUPPORT SYSTEM ---
+
+async function loadMessages() {
+    const container = document.getElementById('messages-thread-container');
+    if (!container) return;
+    
+    try {
+        const res = await fetch('/api/messages');
+        const msgs = await res.json();
+        container.innerHTML = '';
+
+        if (msgs.length === 0) {
+            container.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">No support messages posted yet.</p>`;
+            return;
+        }
+
+        const isAdmin = currentUser && currentUser.email === "admin@mtstore.com";
+
+        msgs.forEach(m => {
+            let adminReplyBox = '';
+            if (m.adminReply) {
+                adminReplyBox = `
+                    <div class="mt-2 bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl">
+                        <span class="text-[9px] font-black text-emerald-400 uppercase"><i class="fa-solid fa-headset"></i> Admin Response:</span>
+                        <p class="text-xs text-white mt-1">${m.adminReply}</p>
+                    </div>
+                `;
+            } else if (isAdmin) {
+                adminReplyBox = `
+                    <div class="mt-2 flex gap-2">
+                        <input type="text" id="reply-input-${m.id}" placeholder="Type admin answer..." class="flex-1 bg-slate-900 border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-white">
+                        <button onclick="sendAdminReply('${m.id}')" class="bg-orange-500 text-slate-950 font-black text-xs px-3 py-1.5 rounded-xl">Reply</button>
+                    </div>
+                `;
+            }
+
+            container.innerHTML += `
+                <div class="bg-slate-950 p-3.5 rounded-2xl border border-gray-900 space-y-1">
+                    <div class="flex justify-between items-center text-[10px] text-gray-500">
+                        <span class="font-extrabold text-orange-400">${m.userEmail}</span>
+                        <span>${new Date(m.createdAt).toLocaleTimeString()}</span>
+                    </div>
+                    <p class="text-xs text-gray-200">${m.userMessage}</p>
+                    ${adminReplyBox}
+                </div>
+            `;
+        });
+    } catch(e) {}
+}
+
+async function sendUserSupportMessage() {
+    const input = document.getElementById('user-support-input');
+    if (!input || !input.value.trim()) return showNotification("Please type a message first.", "error");
+
+    const email = currentUser ? currentUser.email : "guest@mtstore.com";
+
+    try {
+        const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userEmail: email, userMessage: input.value.trim() })
+        });
+        if (res.ok) {
+            input.value = '';
+            showNotification("Question sent to Admin!");
+            loadMessages();
+        }
+    } catch(e) {}
+}
+
+async function sendAdminReply(messageId) {
+    const input = document.getElementById(`reply-input-${messageId}`);
+    if (!input || !input.value.trim()) return;
+
+    try {
+        const res = await fetch('/api/messages/reply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messageId, adminReply: input.value.trim() })
+        });
+        if (res.ok) {
+            showNotification("Response published directly to user.");
+            loadMessages();
+        }
+    } catch(e) {}
+}
+
+// --- PROFILE EDIT (GALLERY IMAGE & NAME CHANGE) ---
+
+function triggerGalleryPicker() {
+    const fileInput = document.getElementById('user-photo-picker');
+    if (fileInput) fileInput.click();
+}
+
+async function handleProfilePhotoSelected(input) {
+    if (!input.files || input.files.length === 0 || !currentUser) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const photoB64 = e.target.result;
+        await saveUserProfile({ photo: photoB64 });
+    };
+    reader.readAsDataURL(file);
+}
+
+async function updateUserName() {
+    const newName = prompt("Enter your new display name:");
+    if (newName && currentUser) {
+        await saveUserProfile({ name: newName });
+    }
+}
+
+async function saveUserProfile(data) {
+    const email = currentUser.email;
+    try {
+        const res = await fetch('/api/users/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, ...data })
+        });
+        if (res.ok) {
+            showNotification("Profile updated successfully!");
+            updateProfilePanel();
         }
     } catch(e) {}
 }
@@ -544,29 +463,27 @@ async function updateProfilePanel() {
     if(authBox) authBox.classList.add('hidden');
     if(profilePanel) profilePanel.classList.remove('hidden');
     
+    // Fetch Updated User Profile
+    let prof = {};
+    try {
+        const res = await fetch(`/api/users/profile/${currentUser.email}`);
+        prof = await res.json();
+    } catch(e) {}
+
+    const imgEl = document.getElementById('panel-user-photo');
+    if (imgEl) imgEl.src = prof.photo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
+
+    const nameEl = document.getElementById('panel-username');
+    if (nameEl) nameEl.textContent = prof.name || currentUser.username || currentUser.email.split('@')[0];
+
     document.getElementById('panel-email').textContent = currentUser.email;
     document.getElementById('panel-role').textContent = `${currentAccountType} mode`;
-    document.getElementById('panel-username').textContent = currentUser.username || currentUser.email.split('@')[0];
     
-    const headingTitle = document.getElementById('profile-orders-heading');
     const orderContainer = document.getElementById('orders-summary-container');
     if (!orderContainer) return;
     orderContainer.innerHTML = '';
 
     if (currentAccountType === 'seller') {
-        if (headingTitle) {
-            headingTitle.innerHTML = `
-                <div class="flex justify-between items-center w-full border-b border-gray-900 pb-2">
-                    <span class="font-extrabold text-xs text-white">
-                        <i class="fa-solid fa-cloud-arrow-up text-orange-400 mr-1"></i> Your Uploaded Products
-                    </span>
-                    <button onclick="openProductUploadForm()" class="bg-orange-500 hover:bg-orange-600 text-slate-950 font-black text-[10px] px-3 py-1.5 rounded-xl transition shadow-lg flex items-center gap-1">
-                        <i class="fa-solid fa-plus text-[8px]"></i> Add New Product
-                    </button>
-                </div>
-            `;
-        }
-        
         try {
             const res = await fetch(`/api/products/seller/${currentUser.email}`);
             const items = await res.json();
@@ -594,7 +511,6 @@ async function updateProfilePanel() {
             });
         } catch(e) {}
     } else {
-        if (headingTitle) headingTitle.innerHTML = `<span class="font-extrabold text-xs text-white"><i class="fa-solid fa-basket-shopping text-orange-400 mr-1"></i> Your Placed Orders Summary</span>`;
         try {
             const res = await fetch(`/api/orders/user/${currentUser.email}`);
             const orders = await res.json();
@@ -617,45 +533,23 @@ async function updateProfilePanel() {
     }
 }
 
-function openProductUploadForm() {
-    switchTab('seller');
-    switchSellerSubTab('upload');
-}
-
-async function cancelUserOrder(orderId, productTitle, sellerEmail) {
-    if (!confirm("Confirm order cancellation request?")) return;
-    try {
-        const res = await fetch('/api/orders/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId, productTitle, sellerEmail, cancelledBy: currentUser.email })
-        });
-        if (res.ok) {
-            showNotification("Order Cancelled. Updates sent to Admin & Seller.");
-            updateProfilePanel();
-        }
-    } catch (err) {}
-}
-
-async function deleteProductItem(productId) {
-    if (!confirm("Are you sure you want to completely delete this item from the store?")) return;
-    try {
-        const res = await fetch(`/api/products/delete/${productId}`, { method: 'DELETE' });
-        if (res.ok) {
-            showNotification("Product deleted successfully.");
-            updateProfilePanel(); 
-        }
-    } catch(e) {}
-}
+// --- PRODUCT UPLOAD WITH EASYPAISA POLICY & CUSTOM EMAIL/PHONE ---
 
 async function handleProductUpload(event) {
     event.preventDefault();
-    if (!currentUser) return showNotification("Please authenticate session first.", "error");
 
     const title = document.getElementById('p-title').value;
     const price = document.getElementById('p-price').value;
     const description = document.getElementById('p-description').value;
     const category = document.getElementById('p-category').value;
+    const sellerEmail = document.getElementById('p-seller-email').value;
+    const sellerPhone = document.getElementById('p-seller-phone').value;
+    const easypaisaTrxId = document.getElementById('p-easypaisa-trx').value;
+
+    if (!sellerEmail || !sellerPhone || !easypaisaTrxId) {
+        return showNotification("Please provide Email, Phone and EasyPaisa Receipt ID.", "error");
+    }
+
     const imgInput = document.getElementById('p-image-file');
     const vidInput = document.getElementById('p-video-file');
 
@@ -670,8 +564,6 @@ async function handleProductUpload(event) {
             });
             imagesBase64.push(b64);
         }
-    } else {
-        imagesBase64.push("https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400");
     }
 
     let videoBase64 = null;
@@ -694,17 +586,27 @@ async function handleProductUpload(event) {
                 description, 
                 category, 
                 images: imagesBase64, 
-                imageUrl: imagesBase64[0],
                 videoUrl: videoBase64,
-                sellerEmail: currentUser.email 
+                sellerEmail, 
+                sellerPhone,
+                easypaisaTrxId
             })
         });
         if(res.ok) {
-            showNotification("Product listing uploaded for admin review pipeline processing.");
+            showNotification("Product listing uploaded with receipt ID. Sent for Admin Approval!");
             document.getElementById('product-upload-form').reset();
-            document.getElementById('lbl-images').textContent = "Select Product Images";
-            document.getElementById('lbl-video').textContent = "Attach Item Video";
             switchTab('account');
+        }
+    } catch(e) {}
+}
+
+async function deleteProductItem(productId) {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+    try {
+        const res = await fetch(`/api/products/delete/${productId}`, { method: 'DELETE' });
+        if (res.ok) {
+            showNotification("Product deleted successfully.");
+            updateProfilePanel(); 
         }
     } catch(e) {}
 }
