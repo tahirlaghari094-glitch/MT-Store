@@ -1,5 +1,5 @@
 let currentProducts = [];
-let cart = []; // Array objects contain: { ...product, selected: true }
+let cart = []; // Array objects contain: { ...product, cartItemId, selected: true }
 let currentUser = null;
 let currentAccountType = 'common'; 
 
@@ -410,41 +410,53 @@ async function submitComment(productId) {
     } catch(e) { showNotification("Failed to post review.", "error"); }
 }
 
+// --- CART FUNCTIONS (UPDATED FOR INDIVIDUAL ITEMS) ---
+
+// 1. ADD TO CART - Har click par bilkul alag line item add hoga
 function addToCart(productId) {
     const p = currentProducts.find(item => item.id === productId);
-    if(!p) return;
-    const existingIndex = cart.findIndex(c => c.id === productId);
-    if(existingIndex > -1) {
-        cart[existingIndex].quantity += 1;
-    } else {
-        cart.push({ ...p, quantity: 1, selected: true });
-    }
+    if (!p) return;
+    
+    cart.push({ 
+        ...p, 
+        cartItemId: Date.now() + Math.random(), 
+        selected: true 
+    });
+    
     showNotification("Item added to basket.");
 }
 
+// 2. BUY NOW DIRECT
 function buyNowDirect(productId) {
     const p = currentProducts.find(item => item.id === productId);
-    if(!p) return;
-    cart = [{ ...p, quantity: 1, selected: true }];
+    if (!p) return;
+    
+    cart.push({ 
+        ...p, 
+        cartItemId: Date.now() + Math.random(), 
+        selected: true 
+    });
+    
     switchTab('cart');
     showNotification("Proceeding directly to checkout.");
 }
 
-// TOGGLE ITEM SELECTION IN CART
+// 3. TOGGLE SPECIFIC ITEM SELECTION
 function toggleCartItemSelection(index) {
-    if (cart[index]) {
+    if (cart[index] !== undefined) {
         cart[index].selected = !cart[index].selected;
         renderCart();
     }
 }
 
+// 4. SELECT / DESELECT ALL ITEMS
 function toggleSelectAllCartItems() {
     const hasUnselected = cart.some(item => !item.selected);
     cart.forEach(item => item.selected = hasUnselected);
     renderCart();
 }
 
-// RENDER CART WITH Dynamic CHECKBOXES & CALCULATIONS
+// 5. RENDER CART WITH DYNAMIC CALCULATIONS
 function renderCart() {
     const list = document.getElementById('cart-items-list');
     const formBox = document.getElementById('checkout-form-container');
@@ -454,21 +466,22 @@ function renderCart() {
     list.innerHTML = '';
     if (cart.length === 0) {
         list.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Your cart container is empty.</p>`;
-        if(formBox) formBox.classList.add('hidden');
-        if(summaryCard) summaryCard.classList.add('hidden');
+        if (formBox) formBox.classList.add('hidden');
+        if (summaryCard) summaryCard.classList.add('hidden');
         return;
     }
 
-    if(formBox) formBox.classList.remove('hidden');
-    if(summaryCard) summaryCard.classList.remove('hidden');
+    if (formBox) formBox.classList.remove('hidden');
+    if (summaryCard) summaryCard.classList.remove('hidden');
 
     let totalAmount = 0;
     let selectedCount = 0;
 
+    // Loop through each individual item separately
     cart.forEach((item, index) => {
-        if(item.selected) {
-            totalAmount += (item.price * item.quantity);
-            selectedCount += item.quantity;
+        if (item.selected) {
+            totalAmount += parseFloat(item.price || 0);
+            selectedCount += 1;
         }
 
         const thumb = (item.images && item.images.length > 0) ? item.images[0] : (item.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100');
@@ -479,18 +492,20 @@ function renderCart() {
                 <img src="${thumb}" class="w-12 h-12 rounded-xl object-cover border border-gray-800 shrink-0">
                 <div class="min-w-0 flex-1">
                     <h4 class="font-extrabold text-xs text-white truncate">${item.title}</h4>
-                    <p class="text-[11px] text-orange-400 font-bold mt-0.5">PKR ${item.price}</p>
+                    <p class="text-[11px] text-orange-400 font-bold mt-0.5">PKR ${Number(item.price).toLocaleString()}</p>
                 </div>
-                <button onclick="cart.splice(${index},1); renderCart();" class="text-xs text-rose-400 hover:text-rose-300 p-2"><i class="fa-solid fa-trash-can"></i></button>
+                <button onclick="cart.splice(${index}, 1); renderCart();" class="text-xs text-rose-400 hover:text-rose-300 p-2">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
             </div>
         `;
     });
 
-    // Update dynamically calculated payment text
+    // Dynamic Price and Count update
     const txtCount = document.getElementById('cart-selected-count');
     const txtTotal = document.getElementById('cart-total-price');
-    if(txtCount) txtCount.textContent = `${selectedCount} Item(s)`;
-    if(txtTotal) txtTotal.textContent = `PKR ${totalAmount.toLocaleString()}`;
+    if (txtCount) txtCount.textContent = `${selectedCount} Item(s)`;
+    if (txtTotal) txtTotal.textContent = `PKR ${totalAmount.toLocaleString()}`;
 }
 
 async function processOrderCheckout() {
