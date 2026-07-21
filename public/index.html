@@ -3,7 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- Title & SEO Meta Tags -->
     <title>MT Store - Premium Multi-Vendor Hub</title>
+    <meta property="og:site_name" content="MT Store" />
+
+    <!-- Google Site Name Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "MT Store",
+      "alternateName": "MT Store",
+      "url": "https://mt-store-sandy.vercel.app"
+    }
+    </script>
+
+    <!-- Favicon Links (Orange MT Logo) -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/icon.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-icon.png" />
+
+    <!-- Stylesheets & Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -187,7 +208,6 @@
         <div id="messages-view" class="tab-view space-y-6">
             <h2 class="text-xl font-black">Support Channels</h2>
             
-            <!-- 🛠️ FIXED: Central Command Support box strictly isolated only to Messages Page -->
             <div id="central-command-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4" style="box-shadow: none !important; border: 1px solid #1e293b !important;">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center font-black text-xs">MT</div>
