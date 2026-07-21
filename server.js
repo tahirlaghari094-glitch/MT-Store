@@ -311,8 +311,31 @@ app.post('/api/products', async (req, res) => {
         await newProduct.save();
 
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
-        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor Email: ${sellerEmail}</p><p>Vendor Phone: ${sellerPhone || 'N/A'}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
-        await sendHtmlEmail(ADMIN_EMAIL, `Approve ${title}`, emailHtml);
+        const mainImg = imgList[0] || 'https://via.placeholder.com/150';
+        
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #f97316; max-w: 600px; margin: auto;">
+                <h2 style="color: #f97316; margin-top: 0;">📦 New Product Approval Request</h2>
+                <div style="background-color: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <img src="${mainImg}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 10px; display: block;" />
+                    <h3 style="color: #fff; margin: 5px 0;">${title}</h3>
+                    <p style="color: #38bdf8; font-weight: bold; margin: 5px 0;">Price: PKR ${price}</p>
+                    <p style="color: #94a3b8; font-size: 13px; margin: 5px 0;"><strong>Category:</strong> ${category || 'electronics'}</p>
+                    <p style="color: #cbd5e1; font-size: 13px; margin: 10px 0;"><strong>Description:</strong> ${description || 'N/A'}</p>
+                </div>
+                
+                <div style="background-color: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="color: #f97316; margin-top: 0; margin-bottom: 8px;">👤 Seller Details</h4>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Seller Email:</strong> ${sellerEmail}</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Seller Phone:</strong> ${sellerPhone || 'N/A'}</p>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="${approveUrl}" style="background-color: #22c55e; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-weight: bold; text-decoration: none; display: inline-block; font-size: 14px;">Approve & Make Product Live</a>
+                </div>
+            </div>
+        `;
+        await sendHtmlEmail(ADMIN_EMAIL, `Approve Product: ${title}`, emailHtml);
 
         res.status(201).json({ message: "Dispatched pipeline." });
     } catch (error) { res.status(500).json({ error: "Error" }); }
@@ -324,7 +347,7 @@ app.get('/api/products/approve/:id', async (req, res) => {
         if (!product) return res.send("Not Found");
         product.status = 'approved';
         await product.save();
-        await sendHtmlEmail(product.sellerEmail, `🚀 Item Live Alert!`, `<h2>Your product "${product.title}" is now approved.</h2>`);
+        await sendHtmlEmail(product.sellerEmail, `🚀 Item Live Alert!`, `<h2>Your product "${product.title}" is now approved and live on the store!</h2>`);
         res.send("<h1>Approved Live!</h1>");
     } catch (e) { res.send("Error"); }
 });
@@ -335,11 +358,13 @@ app.post('/api/orders/cancel', async (req, res) => {
         await Order.deleteOne({ id: orderId });
         
         const cancellationHtml = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444;">
-                <h3 style="color: #ef4444;">❌ Order Cancellation Notice</h3>
-                <p><strong>Order ID Instance:</strong> ${orderId}</p>
-                <p><strong>Product Target:</strong> ${productTitle}</p>
-                <p><strong>Cancelled Processing Request By:</strong> ${cancelledBy}</p>
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444; max-w: 600px; margin: auto;">
+                <h3 style="color: #ef4444; margin-top: 0;">❌ Order Cancellation Notice</h3>
+                <div style="background-color: #0f172a; padding: 15px; border-radius: 8px;">
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Order ID:</strong> ${orderId}</p>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Product Title:</strong> ${productTitle}</p>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Cancelled By:</strong> ${cancelledBy}</p>
+                </div>
             </div>
         `;
 
@@ -361,9 +386,41 @@ app.post('/api/orders', async (req, res) => {
             const newOrder = new Order({ id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity, buyerEmail, buyerName, buyerPhone, buyerAddress });
             await newOrder.save();
 
-            const orderHtml = `<h2>New Order Created: ${orderId}</h2><p>Title: ${item.title}</p>`;
-            await sendHtmlEmail(buyerEmail, `Order Placed`, orderHtml);
-            await sendHtmlEmail(ADMIN_EMAIL, `New Platform Order Request`, orderHtml);
+            // Product lookup for seller email
+            const dbProduct = await Product.findOne({ id: item.id });
+            const sellerEmail = (dbProduct && dbProduct.sellerEmail) ? dbProduct.sellerEmail : item.sellerEmail;
+
+            const orderHtml = `
+                <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #f97316; max-w: 600px; margin: auto;">
+                    <h2 style="color: #f97316; margin-top: 0;">🛒 Order Notification</h2>
+                    <p style="font-size: 14px; color: #cbd5e1;">Order <strong>${orderId}</strong> has been created successfully.</p>
+                    
+                    <div style="background-color: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h4 style="color: #38bdf8; margin-top: 0; margin-bottom: 8px;">📦 Item Details</h4>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Product:</strong> ${item.title}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Price:</strong> PKR ${item.price}</p>
+                    </div>
+
+                    <div style="background-color: #0f172a; padding: 15px; border-radius: 8px;">
+                        <h4 style="color: #f97316; margin-top: 0; margin-bottom: 8px;">👤 Buyer Details</h4>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Name:</strong> ${buyerName}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Email:</strong> ${buyerEmail}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Phone:</strong> ${buyerPhone}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Delivery Address:</strong> ${buyerAddress}</p>
+                    </div>
+                </div>
+            `;
+
+            // Send Email to Buyer
+            await sendHtmlEmail(buyerEmail, `Order Placed Successfully: ${orderId}`, orderHtml);
+            
+            // Send Email to Admin
+            await sendHtmlEmail(ADMIN_EMAIL, `New Platform Order Request: ${orderId}`, orderHtml);
+
+            // Send Email to Seller (if available)
+            if (sellerEmail && sellerEmail.trim() !== '') {
+                await sendHtmlEmail(sellerEmail.trim(), `New Order Received for Your Product: ${orderId}`, orderHtml);
+            }
         }
         res.json({ message: "Dispatched order pipelines." });
     } catch (error) { res.status(500).json({ error: "Error" }); }
