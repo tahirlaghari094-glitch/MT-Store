@@ -3,6 +3,11 @@ let cart = [];
 let currentUser = null;
 let currentAccountType = 'common'; 
 
+// Star rating state for comment submission
+let commentSelectedRating = 0;
+// Files attached to review/comment
+let commentAttachedFiles = [];
+
 function showNotification(message, type = 'success') {
     const toast = document.getElementById('toast-notification');
     const msgText = document.getElementById('toast-message');
@@ -130,11 +135,70 @@ function changeMainImage(src) {
     if(mainImgEl) mainImgEl.src = src;
 }
 
+// Star rating selection helper for comment form
+function setCommentRating(val) {
+    commentSelectedRating = val;
+    for (let i = 1; i <= 5; i++) {
+        const starEl = document.getElementById(`comment-star-${i}`);
+        if (starEl) {
+            if (i <= val) {
+                starEl.className = "fa-solid fa-star text-amber-400 cursor-pointer text-base hover:scale-110 transition";
+            } else {
+                starEl.className = "fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition";
+            }
+        }
+    }
+}
+
+// Gallery media preview for review form
+function handleCommentMediaSelection(input) {
+    if (!input.files) return;
+    const files = Array.from(input.files);
+    commentAttachedFiles = commentAttachedFiles.concat(files);
+    renderCommentMediaPreview();
+}
+
+function renderCommentMediaPreview() {
+    const previewContainer = document.getElementById('comment-media-preview');
+    if (!previewContainer) return;
+    previewContainer.innerHTML = '';
+
+    commentAttachedFiles.forEach((file, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = "relative w-14 h-14 rounded-xl overflow-hidden border border-gray-800 bg-slate-950 shrink-0";
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (file.type.startsWith('image/')) {
+                wrapper.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+            } else if (file.type.startsWith('video/')) {
+                wrapper.innerHTML = `<video src="${e.target.result}" class="w-full h-full object-cover"></video>`;
+            }
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = "absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center font-bold shadow";
+            removeBtn.innerHTML = "&times;";
+            removeBtn.onclick = (event) => {
+                event.stopPropagation();
+                commentAttachedFiles.splice(idx, 1);
+                renderCommentMediaPreview();
+            };
+            wrapper.appendChild(removeBtn);
+        };
+        reader.readAsDataURL(file);
+        previewContainer.appendChild(wrapper);
+    });
+}
+
 function viewDetails(productId) {
     const p = currentProducts.find(item => item.id === productId);
     if (!p) return;
     const container = document.getElementById('product-detail-content');
     if (!container) return;
+
+    // Reset rating and attachments state on view
+    commentSelectedRating = 0;
+    commentAttachedFiles = [];
 
     let images = p.images && p.images.length > 0 ? p.images : [p.imageUrl || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400'];
     
@@ -174,15 +238,42 @@ function viewDetails(productId) {
                 <i class="fa-solid fa-comments text-orange-400"></i> Customer Reviews & Q/A
             </h4>
             
-            <div class="space-y-2">
-                <textarea id="comment-input" rows="2" placeholder="Write a review or question..." class="w-full bg-slate-950 border border-gray-900 rounded-xl p-3 text-xs outline-none focus:border-orange-500 transition text-white"></textarea>
-                <div class="flex justify-between items-center">
-                    <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
-                        <input type="checkbox" id="comment-pin" class="accent-orange-500 rounded cursor-pointer">
-                        <span class="text-[10px] font-bold"><i class="fa-solid fa-thumbtack text-orange-400"></i> Pin this Review</span>
-                    </label>
-                    <button onclick="submitComment('${p.id}')" class="bg-orange-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition">Post</button>
+            <div class="space-y-3 bg-slate-950/60 p-3.5 rounded-2xl border border-gray-900">
+                <!-- Interactive Star Rating selection -->
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your Rating:</span>
+                    <div class="flex items-center gap-1.5">
+                        <i id="comment-star-1" onclick="setCommentRating(1)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
+                        <i id="comment-star-2" onclick="setCommentRating(2)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
+                        <i id="comment-star-3" onclick="setCommentRating(3)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
+                        <i id="comment-star-4" onclick="setCommentRating(4)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
+                        <i id="comment-star-5" onclick="setCommentRating(5)" class="fa-regular fa-star text-gray-600 cursor-pointer text-base hover:scale-110 transition"></i>
+                    </div>
                 </div>
+
+                <textarea id="comment-input" rows="2" placeholder="Write a review or comment..." class="w-full bg-slate-950 border border-gray-900 rounded-xl p-3 text-xs outline-none focus:border-orange-500 transition text-white"></textarea>
+                
+                <!-- Pin / Attachment Toolbar -->
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
+                            <input type="checkbox" id="comment-pin" class="accent-orange-500 rounded cursor-pointer">
+                            <span class="text-[10px] font-bold"><i class="fa-solid fa-thumbtack text-orange-400"></i> Pin</span>
+                        </label>
+
+                        <!-- Pin/Attach Media Gallery File Picker Button -->
+                        <label class="flex items-center gap-1.5 text-[10px] font-bold text-orange-400 bg-slate-900 border border-gray-800 px-3 py-1.5 rounded-xl cursor-pointer hover:bg-slate-800 transition">
+                            <i class="fa-solid fa-paperclip"></i>
+                            <span>Attach Media</span>
+                            <input type="file" id="comment-media-input" accept="image/*, video/*" multiple class="hidden" onchange="handleCommentMediaSelection(this)">
+                        </label>
+                    </div>
+
+                    <button onclick="submitComment('${p.id}')" class="bg-orange-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition">Post Review</button>
+                </div>
+
+                <!-- Live Media Gallery Preview -->
+                <div id="comment-media-preview" class="flex gap-2 overflow-x-auto no-scrollbar pt-1"></div>
             </div>
 
             <div id="comments-list-${p.id}" class="space-y-2 pt-2">
@@ -222,29 +313,79 @@ function renderCommentsList(comments) {
     // Pinned comments first
     const sorted = [...comments].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
     
-    return sorted.map(c => `
-        <div class="bg-slate-950 border ${c.isPinned ? 'border-orange-500/50 bg-orange-500/5' : 'border-gray-900'} p-3 rounded-xl space-y-1 relative">
-            <div class="flex items-center justify-between">
-                <span class="text-[10px] font-extrabold text-orange-400">${c.author}</span>
-                <div class="flex items-center gap-2">
-                    ${c.isPinned ? '<span class="text-[8px] bg-orange-500 text-slate-950 px-1.5 py-0.5 rounded font-black uppercase"><i class="fa-solid fa-thumbtack"></i> Pinned</span>' : ''}
-                    <span class="text-[8px] text-gray-500">${new Date(c.createdAt).toLocaleDateString()}</span>
+    return sorted.map(c => {
+        // Render Star rating stars
+        let starHTML = '';
+        if (c.rating && c.rating > 0) {
+            starHTML = '<div class="flex items-center gap-0.5 text-amber-400 text-[10px] my-0.5">';
+            for (let i = 1; i <= 5; i++) {
+                starHTML += `<i class="${i <= c.rating ? 'fa-solid' : 'fa-regular'} fa-star"></i>`;
+            }
+            starHTML += '</div>';
+        }
+
+        // Render Media gallery attachment previews
+        let mediaHTML = '';
+        if (c.media && c.media.length > 0) {
+            mediaHTML = `
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pt-2">
+                    ${c.media.map(m => {
+                        if (m.type === 'image') {
+                            return `<img src="${m.url}" class="w-14 h-14 rounded-lg object-cover border border-gray-800 shrink-0">`;
+                        } else if (m.type === 'video') {
+                            return `<video src="${m.url}" controls class="w-16 h-14 rounded-lg object-cover border border-gray-800 shrink-0"></video>`;
+                        }
+                        return '';
+                    }).join('')}
                 </div>
+            `;
+        }
+
+        return `
+            <div class="bg-slate-950 border ${c.isPinned ? 'border-orange-500/50 bg-orange-500/5' : 'border-gray-900'} p-3 rounded-xl space-y-1 relative">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-extrabold text-orange-400">${c.author}</span>
+                    <div class="flex items-center gap-2">
+                        ${c.isPinned ? '<span class="text-[8px] bg-orange-500 text-slate-950 px-1.5 py-0.5 rounded font-black uppercase"><i class="fa-solid fa-thumbtack"></i> Pinned</span>' : ''}
+                        <span class="text-[8px] text-gray-500">${new Date(c.createdAt).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                ${starHTML}
+                <p class="text-xs text-gray-300">${c.text}</p>
+                ${mediaHTML}
             </div>
-            <p class="text-xs text-gray-300">${c.text}</p>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function submitComment(productId) {
     const input = document.getElementById('comment-input');
     const pinCheckbox = document.getElementById('comment-pin');
-    if (!input || !input.value.trim()) return showNotification("Please write a comment first.", "error");
+    if (!input || (!input.value.trim() && commentAttachedFiles.length === 0)) {
+        return showNotification("Please write a comment or attach media first.", "error");
+    }
 
     const author = currentUser ? currentUser.email : "Anonymous Buyer";
+    
+    // Process media attachments to base64
+    const mediaList = [];
+    for (const file of commentAttachedFiles) {
+        const reader = new FileReader();
+        const base64Url = await new Promise((resolve) => {
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+        });
+        mediaList.push({
+            type: file.type.startsWith('image/') ? 'image' : 'video',
+            url: base64Url
+        });
+    }
+
     const commentData = {
         author,
         text: input.value.trim(),
+        rating: commentSelectedRating,
+        media: mediaList,
         isPinned: pinCheckbox ? pinCheckbox.checked : false
     };
 
@@ -257,7 +398,7 @@ async function submitComment(productId) {
         
         if (res.ok) {
             const data = await res.json();
-            showNotification("Comment posted successfully!");
+            showNotification("Review posted successfully!");
             const targetProd = currentProducts.find(p => p.id === productId);
             if (targetProd) {
                 targetProd.comments = data.comments;
@@ -266,11 +407,16 @@ async function submitComment(productId) {
             if (commentsContainer) {
                 commentsContainer.innerHTML = renderCommentsList(data.comments);
             }
+
+            // Reset Form Inputs
             input.value = '';
             if (pinCheckbox) pinCheckbox.checked = false;
+            setCommentRating(0);
+            commentAttachedFiles = [];
+            renderCommentMediaPreview();
         }
     } catch(e) {
-        showNotification("Failed to post comment.", "error");
+        showNotification("Failed to post review.", "error");
     }
 }
 
