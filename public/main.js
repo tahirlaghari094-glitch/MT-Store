@@ -49,6 +49,9 @@ function setAccountType(type) {
 
     if(type === 'seller') {
         showNotification("Switched to Seller Dashboard Management.");
+        if (currentUser && document.getElementById('p-email')) {
+            document.getElementById('p-email').value = currentUser.email;
+        }
         switchTab('account');
     } else {
         showNotification("Switched to Common Buyer Account.");
@@ -272,7 +275,6 @@ function viewDetails(productId) {
                 </div>
                 <div class="min-w-0">
                     <h5 class="text-xs font-extrabold text-white truncate">${p.sellerEmail || 'Verified Merchant'}</h5>
-                    ${p.sellerPhone ? `<p class="text-[10px] text-gray-400"><i class="fa-solid fa-phone text-[8px] text-orange-400 mr-1"></i>${p.sellerPhone}</p>` : ''}
                     <p class="text-[9px] text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check text-[8px]"></i> Verified Store Vendor</p>
                 </div>
             </div>
@@ -628,7 +630,7 @@ async function updateProfilePanel() {
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 shrink-0">
-                            <button onclick="startEditingProduct('${p.id}', '${escapedTitle}', '${p.price}', '${escapedDesc}', '${p.category || 'electronics'}', '${p.sellerEmail || ''}', '${p.sellerPhone || ''}')" class="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/20 font-black p-2 rounded-xl transition">
+                            <button onclick="startEditingProduct('${p.id}', '${escapedTitle}', '${p.price}', '${escapedDesc}', '${p.category || 'electronics'}')" class="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/20 font-black p-2 rounded-xl transition">
                                 <i class="fa-solid fa-pen-to-square text-xs"></i>
                             </button>
                             <button onclick="deleteProductItem('${p.id}')" class="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/20 font-black p-2 rounded-xl transition">
@@ -669,14 +671,13 @@ function openProductUploadForm() {
     switchSellerSubTab('upload');
 }
 
-function startEditingProduct(id, title, price, description, category, sellerEmail, sellerPhone) {
+function startEditingProduct(id, title, price, description, category) {
     document.getElementById('editing-product-id').value = id;
     document.getElementById('p-title').value = title;
     document.getElementById('p-price').value = price;
     document.getElementById('p-description').value = description;
     document.getElementById('p-category').value = category || 'electronics';
-    if (document.getElementById('p-email')) document.getElementById('p-email').value = sellerEmail || '';
-    if (document.getElementById('p-phone')) document.getElementById('p-phone').value = sellerPhone || '';
+    if (currentUser) document.getElementById('p-email').value = currentUser.email;
 
     const banner = document.getElementById('edit-mode-banner');
     if (banner) banner.classList.remove('hidden');
@@ -691,6 +692,7 @@ function startEditingProduct(id, title, price, description, category, sellerEmai
 function cancelProductEditMode() {
     document.getElementById('editing-product-id').value = "";
     document.getElementById('product-upload-form').reset();
+    if (currentUser) document.getElementById('p-email').value = currentUser.email;
 
     const banner = document.getElementById('edit-mode-banner');
     if (banner) banner.classList.add('hidden');
@@ -705,7 +707,7 @@ async function cancelUserOrder(orderId, productTitle, sellerEmail) {
         const res = await fetch('/api/orders/cancel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId, productTitle, sellerEmail, cancelledBy: currentUser ? currentUser.email : 'User' })
+            body: JSON.stringify({ orderId, productTitle, sellerEmail, cancelledBy: currentUser.email })
         });
         if (res.ok) {
             showNotification("Order Cancelled. Updates sent to Admin & Seller.");
@@ -727,14 +729,13 @@ async function deleteProductItem(productId) {
 
 async function handleProductUpload(event) {
     event.preventDefault();
+    if (!currentUser) return showNotification("Please authenticate session first.", "error");
 
     const editingId = document.getElementById('editing-product-id').value;
     const title = document.getElementById('p-title').value;
     const price = document.getElementById('p-price').value;
     const description = document.getElementById('p-description').value;
     const category = document.getElementById('p-category').value;
-    const sellerEmail = document.getElementById('p-email').value;
-    const sellerPhone = document.getElementById('p-phone').value;
     const imgInput = document.getElementById('p-image-file');
     const vidInput = document.getElementById('p-video-file');
 
@@ -769,8 +770,7 @@ async function handleProductUpload(event) {
                 price,
                 description,
                 category,
-                sellerEmail,
-                sellerPhone
+                sellerEmail: currentUser.email
             };
             if (imagesBase64.length > 0) payload.images = imagesBase64;
             if (videoBase64) payload.videoUrl = videoBase64;
@@ -805,8 +805,7 @@ async function handleProductUpload(event) {
                     images: imagesBase64, 
                     imageUrl: imagesBase64[0],
                     videoUrl: videoBase64,
-                    sellerEmail,
-                    sellerPhone
+                    sellerEmail: currentUser.email 
                 })
             });
             if(res.ok) {
