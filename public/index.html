@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- Title & SEO Meta Tags -->
     <title>MT Store - Premium Multi-Vendor Hub</title>
     <meta name="title" content="MT Store - Premium Multi-Vendor Hub">
     <meta property="og:site_name" content="MT Store" />
     <meta property="og:title" content="MT Store - Premium Multi-Vendor Hub" />
 
-    <!-- Google Site Name Schema Markup -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -21,16 +19,11 @@
     }
     </script>
 
-    <!-- Favicon / Logo Links -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon.png" />
 
-    <!-- Fallback inline SVG Logo -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23f97316%22/><text y=%22.9em%22 x=%2250%22 text-anchor=%22middle%22 font-size=%2250%22 font-weight=%22900%22 font-family=%22sans-serif%22 fill=%22%23070a13%22>MT</text></svg>" />
-
-    <!-- Stylesheets & Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -55,7 +48,6 @@
             <span id="user-status-badge" class="hidden text-[9px] bg-orange-500/10 border border-orange-500/20 text-orange-400 font-extrabold px-2 py-0.5 rounded-full uppercase"></span>
         </div>
         
-        <!-- Account Dropdown Menu Toggle -->
         <div class="relative">
             <button onclick="toggleDropdown()" class="w-10 h-10 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition">
                 <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -75,18 +67,16 @@
         </div>
     </header>
 
-    <!-- Main Dynamic Application Container Views -->
+    <!-- Main Container -->
     <main class="max-w-md mx-auto px-4 pt-20">
         
-        <!-- 1. HOME VIEW CONTAINER -->
+        <!-- 1. HOME VIEW -->
         <div id="home-view" class="tab-view active space-y-6">
             <div class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 to-slate-950 border border-gray-850 p-6">
                 <h1 class="text-2xl font-black leading-tight">Premium Multi-Vendor<br><span class="text-orange-400">Store Marketplace</span></h1>
                 <p class="text-xs text-gray-400 mt-2">Browse secure item catalogs directly from verified platform vendors.</p>
             </div>
-            <div id="product-grid" class="grid grid-cols-2 gap-3">
-                <!-- Products dynamically rendered here -->
-            </div>
+            <div id="product-grid" class="grid grid-cols-2 gap-3"></div>
         </div>
 
         <!-- 2. PRODUCT DETAILS VIEW -->
@@ -94,19 +84,16 @@
             <button onclick="switchTab('home')" class="inline-flex items-center gap-2 text-xs text-gray-400 font-bold bg-slate-900 px-4 py-2 rounded-full border border-gray-800">
                 <i class="fa-solid fa-arrow-left"></i> Back to Products
             </button>
-            <div id="product-detail-content" class="bg-slate-900/30 border border-gray-900 rounded-3xl p-4 space-y-6">
-                <!-- Dynamic detail rendered here -->
-            </div>
+            <div id="product-detail-content" class="bg-slate-900/30 border border-gray-900 rounded-3xl p-4 space-y-6"></div>
         </div>
 
-        <!-- 3. SELLER UPLOAD DASHBOARD VIEW -->
+        <!-- 3. SELLER DASHBOARD VIEW -->
         <div id="seller-view" class="tab-view space-y-6">
             <div class="flex bg-slate-950 p-1.5 rounded-2xl border border-gray-900">
                 <button id="btn-sub-upload" onclick="switchSellerSubTab('upload')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-orange-500 text-slate-950">Add Listing</button>
                 <button id="btn-sub-history" onclick="switchSellerSubTab('history')" class="flex-1 py-2.5 rounded-xl text-xs font-black transition bg-slate-900 text-gray-300">Active Pipeline</button>
             </div>
 
-            <!-- Upload Sub-Tab Form -->
             <div id="seller-upload-tab" class="tab-view active">
                 <form id="product-upload-form" onsubmit="handleProductUpload(event)" class="space-y-4">
                     <div>
@@ -133,7 +120,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
-                            <span id="lbl-images" class="text-xs text-gray-400 block">Select Product Images (Multiple)</span>
+                            <span id="lbl-images" class="text-xs text-gray-400 block">Select Product Images</span>
                             <input type="file" id="p-image-file" multiple accept="image/*" class="hidden" onchange="previewMedia(this, 'lbl-images')">
                         </label>
                         <label class="bg-slate-950 border border-dashed border-gray-800 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500/40 transition">
@@ -154,27 +141,41 @@
             </div>
         </div>
 
-        <!-- 4. CHECKOUT BASKET FLOW TAB -->
+        <!-- 4. CHECKOUT BASKET FLOW TAB WITH SELECTION & CALCULATION -->
         <div id="cart-view" class="tab-view space-y-6">
-            <h2 class="text-xl font-black">Your Checkout Basket</h2>
-            <div id="cart-items-list" class="space-y-3">
-                <!-- Cart list entries dynamic loop -->
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-black">Your Checkout Basket</h2>
+                <button onclick="toggleSelectAllCartItems()" class="text-xs text-orange-400 font-bold hover:underline">Select / Deselect All</button>
             </div>
+
+            <div id="cart-items-list" class="space-y-3"></div>
+
+            <!-- Total Payment calculation summary card -->
+            <div id="cart-summary-card" class="hidden bg-slate-900/60 border border-gray-800 rounded-2xl p-4 space-y-2">
+                <div class="flex justify-between text-xs text-gray-400 font-bold">
+                    <span>Selected Products:</span>
+                    <span id="cart-selected-count" class="text-white">0 Items</span>
+                </div>
+                <div class="flex justify-between text-sm font-black pt-2 border-t border-gray-800">
+                    <span class="text-gray-200">Total Payable Amount:</span>
+                    <span id="cart-total-price" class="text-orange-400">PKR 0</span>
+                </div>
+            </div>
+
             <div id="checkout-form-container" class="hidden bg-slate-900/40 border border-gray-900 rounded-3xl p-4 space-y-4">
-                <h4 class="text-xs font-black uppercase text-orange-400 tracking-wider">Cash On Delivery Billing Address</h4>
+                <h4 class="text-xs font-black uppercase text-orange-400 tracking-wider">Cash On Delivery Address</h4>
                 <div class="space-y-3">
                     <input type="text" id="b-name" placeholder="Full Legal Name" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
                     <input type="email" id="b-email" placeholder="Billing Email Address" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
                     <input type="tel" id="b-phone" placeholder="Contact Mobile Number" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition">
                     <textarea id="b-address" placeholder="Complete Door Delivery Address Layout" rows="2" required class="w-full bg-slate-950 border border-gray-900 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 transition"></textarea>
                 </div>
-                <button onclick="processOrderCheckout()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs transition uppercase">Confirm Secure Order Purchase</button>
+                <button onclick="processOrderCheckout()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs transition uppercase">Buy Selected Products</button>
             </div>
         </div>
 
-        <!-- 5. ACCOUNT PROFILE & AUTH HUB VIEW -->
+        <!-- 5. ACCOUNT PROFILE HUB -->
         <div id="account-view" class="tab-view space-y-6">
-            <!-- Unauthenticated Box -->
             <div id="auth-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-6 space-y-4">
                 <div>
                     <h3 class="text-lg font-black">Secure Account Access</h3>
@@ -187,7 +188,6 @@
                 <button onclick="handleAuth()" class="w-full bg-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition">Authenticate Live Session</button>
             </div>
 
-            <!-- Profile Dash Mode View Panel -->
             <div id="profile-panel" class="hidden space-y-6">
                 <div class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 flex items-center gap-4">
                     <div class="w-14 h-14 rounded-2xl bg-orange-500 text-slate-950 flex items-center justify-center font-black text-lg shadow-lg" id="panel-avatar">MT</div>
@@ -198,23 +198,17 @@
                     </div>
                 </div>
 
-                <!-- DYNAMIC RENDERING -->
                 <div class="space-y-3">
-                    <h3 id="profile-orders-heading" class="text-xs font-black uppercase tracking-wider text-gray-400 flex justify-between items-center w-full">
-                        <!-- Headings inject dynamically here -->
-                    </h3>
-                    <div id="orders-summary-container" class="space-y-2">
-                        <!-- Dynamic content maps inside here -->
-                    </div>
+                    <h3 id="profile-orders-heading" class="text-xs font-black uppercase tracking-wider text-gray-400 flex justify-between items-center w-full"></h3>
+                    <div id="orders-summary-container" class="space-y-2"></div>
                 </div>
             </div>
         </div>
 
-        <!-- 6. MESSAGES TAB VIEW -->
+        <!-- 6. MESSAGES VIEW -->
         <div id="messages-view" class="tab-view space-y-6">
             <h2 class="text-xl font-black">Support Channels</h2>
-            
-            <div id="central-command-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4" style="box-shadow: none !important; border: 1px solid #1e293b !important;">
+            <div id="central-command-box" class="bg-slate-900/40 border border-gray-900 rounded-3xl p-5 space-y-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center font-black text-xs">MT</div>
                     <div>
@@ -227,19 +221,18 @@
                     Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
                 </div>
             </div>
-
             <p class="text-xs text-gray-500 text-center py-4">No additional active message thread history detected.</p>
         </div>
 
     </main>
 
-    <!-- Global Toast Notifications Popup System -->
+    <!-- Toast Popup System -->
     <div id="toast-notification" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900 border border-transparent text-transparent px-5 py-3 rounded-2xl shadow-xl transition opacity-0 -translate-y-4 pointer-events-none">
         <i class="fa-solid fa-circle-info text-xs"></i>
         <span id="toast-message" class="text-xs font-bold">Alert Message Pipeline.</span>
     </div>
 
-    <!-- Bottom Persistent Navigation Hub -->
+    <!-- Bottom Persistent Navigation -->
     <nav class="fixed bottom-0 left-0 right-0 bg-[#070a13]/90 backdrop-blur-2xl border-t border-gray-900 z-40 py-2.5">
         <div class="max-w-md mx-auto flex justify-around items-center">
             <button onclick="switchTab('home')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition group focus:outline-none">
@@ -261,7 +254,6 @@
         </div>
     </nav>
 
-    <!-- App Engine Script -->
     <script src="/main.js"></script>
 </body>
 </html>
