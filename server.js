@@ -8,45 +8,55 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 const PORT = process.env.PORT || 5000;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'lagharitahir08@gmail.com';
+const ADMIN_EMAIL = 'lagharitahir08@gmail.com';
 const LIVE_DOMAIN = process.env.LIVE_DOMAIN || 'https://mt-store-sandy.vercel.app';
 
-// MongoDB Connection
-if (process.env.MONGODB_URI) {
-    mongoose.connect(process.env.MONGODB_URI)
-        .then(() => console.log('MongoDB Connected'))
-        .catch(err => console.error('MongoDB Connection Error:', err));
-}
-
-// Nodemailer Transporter
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
-    }
+    },
 });
 
 const sendHtmlEmail = async (to, subject, htmlContent, replyTo = null) => {
     if (!to) return;
     try {
-        await transporter.sendMail({
+        const mailOptions = {
             from: process.env.GMAIL_USER,
-            to,
-            subject,
+            to: to.toLowerCase(),
+            subject: subject,
             html: htmlContent,
-            replyTo: replyTo || undefined
-        });
-    } catch (e) {
-        console.error("Email send error:", e);
+            ...(replyTo && { replyTo: replyTo.toLowerCase() })
+        };
+        await transporter.sendMail(mailOptions);
+        console.log("🚀 Email routed successfully to:", to);
+    } catch (error) {
+        console.log("❌ Email configuration error: ", error);
     }
 };
 
-// Database Schemas
+const MONGODB_URI = process.env.MONGODB_URI;
+if (MONGODB_URI) {
+    mongoose.connect(MONGODB_URI)
+        .then(() => console.log("🔌 MongoDB Connected Successfully!"))
+        .catch(err => console.error("❌ MongoDB Engine Error: ", err));
+}
+
+// SCHEMAS DEFINITION
+const UserSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true, lowercase: true },
+    username: String,
+    profileImage: String
+});
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
+
 const CommentSchema = new mongoose.Schema({
-    userEmail: String,
-    userName: String,
+    author: String,
     text: String,
+    rating: { type: Number, default: 0 },
+    media: [{ type: { type: String }, url: String }],
+    isPinned: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -61,146 +71,79 @@ const ProductSchema = new mongoose.Schema({
     videoUrl: String,
     comments: [CommentSchema],
     sellerEmail: { type: String, lowercase: true },
-    sellerPhone: String,
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
+const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
+const OrderSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    productId: String,
+    title: String,
+    price: Number,
+    quantity: Number,
+    buyerEmail: { type: String, lowercase: true },
+    buyerName: String,
+    buyerPhone: String,
+    buyerAddress: String,
+    status: { type: String, default: 'Processing' },
+    createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
+
+// LIVE CHAT MESSAGE SCHEMA
 const ChatMessageSchema = new mongoose.Schema({
-    userEmail: { type: String, lowercase: true, required: true },
+    userEmail: { type: String, required: true, lowercase: true },
     sender: { type: String, required: true }, // 'user' or 'admin'
     message: { type: String, required: true },
-    timestamp: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now }
 });
-
-const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 const ChatMessage = mongoose.models.ChatMessage || mongoose.model('ChatMessage', ChatMessageSchema);
 
-// Static files
-app.use(express.static(path.join(__dirname, 'public')));
+// STATIC FILES ROUTER MIDDLEWARE
+const rootPath = process.cwd();
+app.use(express.static(rootPath));
+app.use(express.static(path.join(rootPath, 'public')));
 
-// API Routes
-
-// 1. Get Approved Products
-app.get('/api/products', async (req, res) => {
+// API ENDPOINTS
+app.post('/api/users/login', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email required" });
     try {
-        const products = await Product.find({ status: 'approved' }).sort({ createdAt: -1 });
-        res.json(products);
-    } catch (e) {
-        res.status(500).json({ error: "Failed to fetch products" });
-    }
-});
-
-// 2. Create Product (Pipeline Pending)
-app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, images, imageUrl, videoUrl, sellerEmail, sellerPhone } = req.body;
-    try {
-        const productId = Date.now().toString();
-        const imgList = (images && images.length > 0) ? images : [imageUrl];
-        
-        const newProduct = new Product({ 
-            id: productId, 
-            title, 
-            price: parseFloat(price), 
-            description, 
-            category: category || 'electronics', 
-            imageUrl: imgList[0],
-            images: imgList, 
-            videoUrl: videoUrl || null,
-            sellerEmail,
-            sellerPhone,
-            status: 'pending'
-        });
-        await newProduct.save();
-
-        const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
-        const emailHtml = `
-            <h2>Product Review Pipeline Pending</h2>
-            <p><strong>Title:</strong> ${title}</p>
-            <p><strong>Price:</strong> PKR ${price}</p>
-            <p><strong>Vendor Email:</strong> ${sellerEmail}</p>
-            <p><strong>Vendor Phone:</strong> ${sellerPhone || 'N/A'}</p>
-            <br>
-            <a href="${approveUrl}" style="background: #f97316; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none;">Click to Live Verify & Approve Item</a>
-        `;
-        await sendHtmlEmail(ADMIN_EMAIL, `Approve Product: ${title}`, emailHtml);
-
-        res.status(201).json({ message: "Dispatched pipeline successfully.", product: newProduct });
-    } catch (error) { 
-        res.status(500).json({ error: "Error submitting product" }); 
-    }
-});
-
-// 3. Update Product
-app.put('/api/products/update/:id', async (req, res) => {
-    const { title, price, description, category, images, videoUrl, sellerEmail, sellerPhone } = req.body;
-    try {
-        const product = await Product.findOne({ id: req.params.id });
-        if (!product) return res.status(404).json({ error: "Product not found" });
-
-        if (title) product.title = title;
-        if (price) product.price = parseFloat(price);
-        if (description) product.description = description;
-        if (category) product.category = category;
-        if (sellerEmail) product.sellerEmail = sellerEmail;
-        if (sellerPhone) product.sellerPhone = sellerPhone;
-        if (images && images.length > 0) {
-            product.images = images;
-            product.imageUrl = images[0];
+        let user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            user = new User({ email: email.toLowerCase(), username: email.split('@')[0] });
+            await user.save();
         }
-        if (videoUrl !== undefined) product.videoUrl = videoUrl;
-
-        await product.save();
-        res.json({ success: true, product });
-    } catch (e) { 
-        res.status(500).json({ error: "Update failed" }); 
-    }
+        res.json({ success: true, user });
+    } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
-// 4. Approve Product
-app.get('/api/products/approve/:id', async (req, res) => {
+app.post('/api/users/update-profile', async (req, res) => {
+    const { email, username, profileImage } = req.body;
+    if (!email) return res.status(400).json({ error: "Email required" });
     try {
-        const product = await Product.findOne({ id: req.params.id });
-        if (!product) return res.status(404).send("Product not found");
-        
-        product.status = 'approved';
-        await product.save();
-        res.send(`<h2>Product "${product.title}" has been approved and is now LIVE!</h2><a href="${LIVE_DOMAIN}">Go to Store</a>`);
-    } catch (e) {
-        res.status(500).send("Error approving product");
-    }
+        let user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        if (username) user.username = username;
+        if (profileImage) user.profileImage = profileImage;
+        await user.save();
+
+        res.json({ success: true, user });
+    } catch (e) { res.status(500).json({ error: "Profile update error" }); }
 });
 
-// 5. Add Comment
-app.post('/api/products/:id/comment', async (req, res) => {
-    const { userEmail, userName, text } = req.body;
+// LIVE CHAT ENDPOINTS
+app.get('/api/chat/messages/:userEmail', async (req, res) => {
     try {
-        const product = await Product.findOne({ id: req.params.id });
-        if (!product) return res.status(404).json({ error: "Product not found" });
-
-        product.comments.push({ userEmail, userName, text });
-        await product.save();
-        res.json({ success: true, comments: product.comments });
-    } catch (e) {
-        res.status(500).json({ error: "Failed to add comment" });
-    }
-});
-
-// 6. Live Chat Messages
-app.get('/api/chat/messages', async (req, res) => {
-    const { userEmail } = req.query;
-    if (!userEmail) return res.status(400).json({ error: "userEmail required" });
-    try {
-        const messages = await ChatMessage.find({ userEmail: userEmail.toLowerCase() }).sort({ timestamp: 1 });
+        const messages = await ChatMessage.find({ userEmail: req.params.userEmail.toLowerCase() }).sort({ createdAt: 1 });
         res.json(messages);
-    } catch (e) {
-        res.status(500).json({ error: "Error fetching messages" });
-    }
+    } catch (e) { res.status(500).json({ error: "Error loading chat" }); }
 });
 
-// 7. Send Chat / Inquiry Message
 app.post('/api/chat/send', async (req, res) => {
-    const { userEmail, sender, message, userName, targetSellerEmail } = req.body;
+    const { userEmail, sender, message, userName } = req.body;
     if (!message || !userEmail) return res.status(400).json({ error: "Missing data" });
 
     try {
@@ -215,40 +158,37 @@ app.post('/api/chat/send', async (req, res) => {
             const replyUrl = `${LIVE_DOMAIN}/api/chat/admin-reply-page?userEmail=${encodeURIComponent(userEmail)}`;
             const emailHtml = `
                 <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #f97316;">
-                    <h2 style="color: #f97316;">💬 New Product Query / Support Message from ${userName || userEmail}</h2>
+                    <h2 style="color: #f97316;">💬 New Live Chat Message from ${userName || userEmail}</h2>
                     <blockquote style="background: #0f172a; padding: 12px; border-left: 4px solid #f97316; margin: 15px 0; color: #e2e8f0;">${message}</blockquote>
                     <a href="${replyUrl}" style="display: inline-block; background: #f97316; color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px;">Type Answer / Reply Directly</a>
                 </div>
             `;
-            
-            const recipientEmail = targetSellerEmail ? targetSellerEmail.toLowerCase() : ADMIN_EMAIL;
-            await sendHtmlEmail(recipientEmail, `Product Inquiry from ${userName || userEmail}`, emailHtml, userEmail);
+            await sendHtmlEmail(ADMIN_EMAIL, `Support Query from ${userName || userEmail}`, emailHtml, userEmail);
         }
 
         res.json({ success: true, chatMsg });
-    } catch (e) { 
-        res.status(500).json({ error: "Error sending chat message" }); 
-    }
+    } catch (e) { res.status(500).json({ error: "Error sending chat message" }); }
 });
 
-// Admin Reply Web Page
+// ADMIN QUICK REPLY PAGE
 app.get('/api/chat/admin-reply-page', (req, res) => {
-    const { userEmail } = req.query;
+    const userEmail = req.query.userEmail;
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Reply to User</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Admin Quick Reply</title>
             <script src="https://cdn.tailwindcss.com"></script>
         </head>
-        <body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-4">
-            <div class="bg-slate-900 border border-gray-800 p-6 rounded-2xl max-w-md w-full">
-                <h2 class="text-xl font-bold text-orange-500 mb-2">Reply to ${userEmail}</h2>
-                <form action="/api/chat/admin-reply" method="POST" class="space-y-4">
+        <body class="bg-slate-950 text-white min-h-screen p-4 flex items-center justify-center font-sans">
+            <div class="bg-slate-900 border border-orange-500/30 p-6 rounded-2xl w-full max-w-md space-y-4">
+                <h2 class="text-orange-400 font-bold text-lg">Reply to Chat User</h2>
+                <p class="text-xs text-gray-400">Target User: <span class="text-white font-mono">${userEmail}</span></p>
+                <form action="/api/chat/admin-reply-submit" method="POST" class="space-y-3">
                     <input type="hidden" name="userEmail" value="${userEmail}">
-                    <textarea name="message" required rows="4" placeholder="Write reply message..." class="w-full bg-slate-950 border border-gray-800 rounded-xl p-3 text-sm text-white focus:border-orange-500 outline-none"></textarea>
-                    <button type="submit" class="w-full bg-orange-500 text-slate-950 font-bold py-3 rounded-xl uppercase text-xs">Send Direct Reply</button>
+                    <textarea name="message" rows="4" placeholder="Type your answer here..." required class="w-full bg-slate-950 border border-gray-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500"></textarea>
+                    <button type="submit" class="w-full bg-orange-500 text-slate-950 font-black py-3 rounded-xl text-xs uppercase">Send Answer to User Chat</button>
                 </form>
             </div>
         </body>
@@ -256,7 +196,7 @@ app.get('/api/chat/admin-reply-page', (req, res) => {
     `);
 });
 
-app.post('/api/chat/admin-reply', async (req, res) => {
+app.post('/api/chat/admin-reply-submit', async (req, res) => {
     const { userEmail, message } = req.body;
     try {
         const chatMsg = new ChatMessage({
@@ -265,14 +205,173 @@ app.post('/api/chat/admin-reply', async (req, res) => {
             message
         });
         await chatMsg.save();
-        res.send(`<h2>Reply Sent Successfully to ${userEmail}!</h2><p>You can close this tab.</p>`);
-    } catch (e) {
-        res.status(500).send("Failed to send reply.");
-    }
+        res.send(`
+            <body style="background:#070a13; color:#10b981; font-family:sans-serif; text-align:center; padding-top:50px;">
+                <h2>✅ Reply Sent Successfully to Chat Box!</h2>
+                <p style="color:#94a3b8; font-size:14px;">User will now see this answer directly on the website chat.</p>
+            </body>
+        `);
+    } catch(e) { res.status(500).send("Error saving reply"); }
 });
 
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get('/api/products', async (req, res) => {
+    try {
+        const approvedProducts = await Product.find({ status: 'approved' });
+        res.json(approvedProducts);
+    } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get('/api/products/seller/:email', async (req, res) => {
+    try {
+        const sellerProducts = await Product.find({ sellerEmail: req.params.email.toLowerCase() });
+        res.json(sellerProducts);
+    } catch (e) { res.status(500).json({ error: "Error" }); }
+});
+
+// UPDATE / EDIT PRODUCT ENDPOINT
+app.put('/api/products/update/:id', async (req, res) => {
+    const { title, price, description, category, images, videoUrl, sellerEmail } = req.body;
+    try {
+        const product = await Product.findOne({ id: req.params.id });
+        if (!product) return res.status(404).json({ error: "Product not found" });
+
+        if (product.sellerEmail !== sellerEmail.toLowerCase()) {
+            return res.status(403).json({ error: "Unauthorized product update attempt" });
+        }
+
+        if (title) product.title = title;
+        if (price) product.price = parseFloat(price);
+        if (description) product.description = description;
+        if (category) product.category = category;
+        if (images && images.length > 0) {
+            product.images = images;
+            product.imageUrl = images[0];
+        }
+        if (videoUrl !== undefined) product.videoUrl = videoUrl;
+
+        await product.save();
+        res.json({ success: true, product });
+    } catch (e) { res.status(500).json({ error: "Update failed" }); }
+});
+
+app.delete('/api/products/delete/:id', async (req, res) => {
+    try {
+        await Product.deleteOne({ id: req.params.id });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Error" }); }
+});
+
+app.post('/api/products/:id/comments', async (req, res) => {
+    const { author, text, rating, media, isPinned } = req.body;
+    try {
+        const product = await Product.findOne({ id: req.params.id });
+        if (!product) return res.status(404).json({ error: "Product not found" });
+
+        product.comments.push({ 
+            author, 
+            text, 
+            rating: rating || 0,
+            media: media || [],
+            isPinned: !!isPinned 
+        });
+        await product.save();
+        res.json({ success: true, comments: product.comments });
+    } catch (e) { res.status(500).json({ error: "Error posting comment" }); }
+});
+
+app.get('/api/orders/user/:email', async (req, res) => {
+    try {
+        const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
+        const records = [];
+        for (let o of userOrders) {
+            const p = await Product.findOne({ id: o.productId });
+            records.push({ ...o._doc, sellerEmail: p ? p.sellerEmail : '' });
+        }
+        res.json(records);
+    } catch (e) { res.status(500).json({ error: "Error" }); }
+});
+
+app.post('/api/products', async (req, res) => {
+    const { title, price, description, category, images, imageUrl, videoUrl, sellerEmail } = req.body;
+    try {
+        const productId = Date.now().toString();
+        const imgList = (images && images.length > 0) ? images : [imageUrl];
+        
+        const newProduct = new Product({ 
+            id: productId, 
+            title, 
+            price: parseFloat(price), 
+            description, 
+            category: category || 'electronics', 
+            imageUrl: imgList[0],
+            images: imgList, 
+            videoUrl: videoUrl || null,
+            sellerEmail 
+        });
+        await newProduct.save();
+
+        const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
+        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor: ${sellerEmail}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
+        await sendHtmlEmail(ADMIN_EMAIL, `Approve ${title}`, emailHtml);
+
+        res.status(201).json({ message: "Dispatched pipeline." });
+    } catch (error) { res.status(500).json({ error: "Error" }); }
+});
+
+app.get('/api/products/approve/:id', async (req, res) => {
+    try {
+        const product = await Product.findOne({ id: req.params.id });
+        if (!product) return res.send("Not Found");
+        product.status = 'approved';
+        await product.save();
+        await sendHtmlEmail(product.sellerEmail, `🚀 Item Live Alert!`, `<h2>Your product "${product.title}" is now approved.</h2>`);
+        res.send("<h1>Approved Live!</h1>");
+    } catch (e) { res.send("Error"); }
+});
+
+app.post('/api/orders/cancel', async (req, res) => {
+    const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
+    try {
+        await Order.deleteOne({ id: orderId });
+        
+        const cancellationHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #070a13; color: #f3f4f6; border-radius: 12px; border: 1px solid #ef4444;">
+                <h3 style="color: #ef4444;">❌ Order Cancellation Notice</h3>
+                <p><strong>Order ID Instance:</strong> ${orderId}</p>
+                <p><strong>Product Target:</strong> ${productTitle}</p>
+                <p><strong>Cancelled Processing Request By:</strong> ${cancelledBy}</p>
+            </div>
+        `;
+
+        await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
+        
+        if (sellerEmail && sellerEmail.trim() !== '') {
+            await sendHtmlEmail(sellerEmail.trim(), `Cancellation Notice: Order ${orderId}`, cancellationHtml);
+        }
+
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ error: "Pipeline failure" }); }
+});
+
+app.post('/api/orders', async (req, res) => {
+    const { items, buyerName, buyerEmail, buyerPhone, buyerAddress } = req.body;
+    try {
+        for (const item of items) {
+            const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+            const newOrder = new Order({ id: orderId, productId: item.id, title: item.title, price: item.price, quantity: item.quantity, buyerEmail, buyerName, buyerPhone, buyerAddress });
+            await newOrder.save();
+
+            const orderHtml = `<h2>New Order Created: ${orderId}</h2><p>Title: ${item.title}</p>`;
+            await sendHtmlEmail(buyerEmail, `Order Placed`, orderHtml);
+            await sendHtmlEmail(ADMIN_EMAIL, `New Platform Order Request`, orderHtml);
+        }
+        res.json({ message: "Dispatched order pipelines." });
+    } catch (error) { res.status(500).json({ error: "Error" }); }
+});
+
+app.get(/^\/(?!api).*/, (req, res) => { res.sendFile(path.join(rootPath, 'index.html')); });
+
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => console.log(`Server executing safely on port ${PORT}`));
+}
+module.exports = app;
