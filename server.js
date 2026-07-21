@@ -42,13 +42,20 @@ if (MONGODB_URI) {
         .catch(err => console.error("❌ MongoDB Engine Error: ", err));
 }
 
-// DATABASE SCHEMAS DEFINITION LOOP
+// SCHEMAS DEFINITION
 const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true },
     username: String,
     profileImage: String
 });
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
+
+const CommentSchema = new mongoose.Schema({
+    author: String,
+    text: String,
+    isPinned: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now }
+});
 
 const ProductSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -57,6 +64,8 @@ const ProductSchema = new mongoose.Schema({
     description: String,
     category: String,
     imageUrl: String,
+    images: [String],
+    comments: [CommentSchema],
     sellerEmail: { type: String, lowercase: true },
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
@@ -83,7 +92,7 @@ const rootPath = process.cwd();
 app.use(express.static(rootPath));
 app.use(express.static(path.join(rootPath, 'public')));
 
-// APIS ACTIONS ENDPOINTS
+// API ENDPOINTS
 app.post('/api/users/login', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email required" });
@@ -118,6 +127,18 @@ app.delete('/api/products/delete/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Error" }); }
 });
 
+app.post('/api/products/:id/comments', async (req, res) => {
+    const { author, text, isPinned } = req.body;
+    try {
+        const product = await Product.findOne({ id: req.params.id });
+        if (!product) return res.status(404).json({ error: "Product not found" });
+
+        product.comments.push({ author, text, isPinned: !!isPinned });
+        await product.save();
+        res.json({ success: true, comments: product.comments });
+    } catch (e) { res.status(500).json({ error: "Error posting comment" }); }
+});
+
 app.get('/api/orders/user/:email', async (req, res) => {
     try {
         const userOrders = await Order.find({ buyerEmail: req.params.email.toLowerCase() });
@@ -131,10 +152,21 @@ app.get('/api/orders/user/:email', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, imageBase64, sellerEmail } = req.body;
+    const { title, price, description, category, images, imageUrl, sellerEmail } = req.body;
     try {
         const productId = Date.now().toString();
-        const newProduct = new Product({ id: productId, title, price: parseFloat(price), description, category, imageUrl: imageBase64, sellerEmail });
+        const imgList = (images && images.length > 0) ? images : [imageUrl];
+        
+        const newProduct = new Product({ 
+            id: productId, 
+            title, 
+            price: parseFloat(price), 
+            description, 
+            category, 
+            imageUrl: imgList[0],
+            images: imgList, 
+            sellerEmail 
+        });
         await newProduct.save();
 
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
@@ -156,7 +188,6 @@ app.get('/api/products/approve/:id', async (req, res) => {
     } catch (e) { res.send("Error"); }
 });
 
-// 🚨 FIXED: Cancellation logic dispatches warning emails to BOTH Admin & Linked Seller
 app.post('/api/orders/cancel', async (req, res) => {
     const { orderId, productTitle, sellerEmail, cancelledBy } = req.body;
     try {
@@ -171,10 +202,8 @@ app.post('/api/orders/cancel', async (req, res) => {
             </div>
         `;
 
-        // Route alert to Admin
         await sendHtmlEmail(ADMIN_EMAIL, `Order Cancelled: ${orderId}`, cancellationHtml);
         
-        // Route alert dynamically to Seller
         if (sellerEmail && sellerEmail.trim() !== '') {
             await sendHtmlEmail(sellerEmail.trim(), `Cancellation Notice: Order ${orderId}`, cancellationHtml);
         }
