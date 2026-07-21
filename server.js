@@ -71,6 +71,7 @@ const ProductSchema = new mongoose.Schema({
     videoUrl: String,
     comments: [CommentSchema],
     sellerEmail: { type: String, lowercase: true },
+    sellerPhone: String,
     status: { type: String, default: 'pending' },
     createdAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -230,19 +231,17 @@ app.get('/api/products/seller/:email', async (req, res) => {
 
 // UPDATE / EDIT PRODUCT ENDPOINT
 app.put('/api/products/update/:id', async (req, res) => {
-    const { title, price, description, category, images, videoUrl, sellerEmail } = req.body;
+    const { title, price, description, category, images, videoUrl, sellerEmail, sellerPhone } = req.body;
     try {
         const product = await Product.findOne({ id: req.params.id });
         if (!product) return res.status(404).json({ error: "Product not found" });
-
-        if (product.sellerEmail !== sellerEmail.toLowerCase()) {
-            return res.status(403).json({ error: "Unauthorized product update attempt" });
-        }
 
         if (title) product.title = title;
         if (price) product.price = parseFloat(price);
         if (description) product.description = description;
         if (category) product.category = category;
+        if (sellerEmail) product.sellerEmail = sellerEmail.toLowerCase();
+        if (sellerPhone) product.sellerPhone = sellerPhone;
         if (images && images.length > 0) {
             product.images = images;
             product.imageUrl = images[0];
@@ -292,7 +291,7 @@ app.get('/api/orders/user/:email', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { title, price, description, category, images, imageUrl, videoUrl, sellerEmail } = req.body;
+    const { title, price, description, category, images, imageUrl, videoUrl, sellerEmail, sellerPhone } = req.body;
     try {
         const productId = Date.now().toString();
         const imgList = (images && images.length > 0) ? images : [imageUrl];
@@ -306,12 +305,13 @@ app.post('/api/products', async (req, res) => {
             imageUrl: imgList[0],
             images: imgList, 
             videoUrl: videoUrl || null,
-            sellerEmail 
+            sellerEmail,
+            sellerPhone
         });
         await newProduct.save();
 
         const approveUrl = `${LIVE_DOMAIN}/api/products/approve/${productId}`;
-        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor: ${sellerEmail}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
+        const emailHtml = `<h2>Product Review Pipeline Pending</h2><p>Vendor Email: ${sellerEmail}</p><p>Vendor Phone: ${sellerPhone || 'N/A'}</p><a href="${approveUrl}">Click to Live Verify Item</a>`;
         await sendHtmlEmail(ADMIN_EMAIL, `Approve ${title}`, emailHtml);
 
         res.status(201).json({ message: "Dispatched pipeline." });
