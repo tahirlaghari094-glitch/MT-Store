@@ -95,7 +95,8 @@ const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 // LIVE CHAT MESSAGE SCHEMA
 const ChatMessageSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, lowercase: true },
-    sender: { type: String, required: true }, // 'user' or 'admin'
+    sellerEmail: { type: String, lowercase: true }, // Added for seller-specific chat tracking
+    sender: { type: String, required: true }, // 'user', 'admin', or 'seller'
     message: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
 });
@@ -144,50 +145,57 @@ app.get('/api/chat/messages/:userEmail', async (req, res) => {
 });
 
 app.post('/api/chat/send', async (req, res) => {
-    const { userEmail, sender, message, userName } = req.body;
+    const { userEmail, sellerEmail, sender, message, userName, productTitle } = req.body;
     if (!message || !userEmail) return res.status(400).json({ error: "Missing data" });
 
     try {
         const chatMsg = new ChatMessage({
             userEmail: userEmail.toLowerCase(),
+            sellerEmail: sellerEmail ? sellerEmail.toLowerCase() : null,
             sender: sender || 'user',
             message
         });
         await chatMsg.save();
 
-        if (sender !== 'admin') {
-            const replyUrl = `${LIVE_DOMAIN}/api/chat/admin-reply-page?userEmail=${encodeURIComponent(userEmail)}`;
+        if (sender !== 'admin' && sender !== 'seller') {
+            const targetEmail = (sellerEmail && sellerEmail.trim() !== '') ? sellerEmail.trim() : ADMIN_EMAIL;
+            const replyUrl = `${LIVE_DOMAIN}/api/chat/admin-reply-page?userEmail=${encodeURIComponent(userEmail)}&sellerEmail=${encodeURIComponent(targetEmail)}`;
+            
             const emailHtml = `
                 <div style="font-family: Arial, sans-serif; padding: 20px; background: #070a13; color: #fff; border-radius: 12px; border: 1px solid #f97316;">
-                    <h2 style="color: #f97316;">💬 New Live Chat Message from ${userName || userEmail}</h2>
+                    <h2 style="color: #f97316;">💬 New Product Query / Chat Message</h2>
+                    <p style="color: #cbd5e1; font-size: 13px;"><strong>From User:</strong> ${userName || userEmail}</p>
+                    ${productTitle ? `<p style="color: #38bdf8; font-size: 13px;"><strong>Product Inquired:</strong> ${productTitle}</p>` : ''}
                     <blockquote style="background: #0f172a; padding: 12px; border-left: 4px solid #f97316; margin: 15px 0; color: #e2e8f0;">${message}</blockquote>
                     <a href="${replyUrl}" style="display: inline-block; background: #f97316; color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px;">Type Answer / Reply Directly</a>
                 </div>
             `;
-            await sendHtmlEmail(ADMIN_EMAIL, `Support Query from ${userName || userEmail}`, emailHtml, userEmail);
+            await sendHtmlEmail(targetEmail, `Product Query from ${userName || userEmail}`, emailHtml, userEmail);
         }
 
         res.json({ success: true, chatMsg });
     } catch (e) { res.status(500).json({ error: "Error sending chat message" }); }
 });
 
-// ADMIN QUICK REPLY PAGE
+// QUICK REPLY PAGE FOR ADMIN & SELLERS
 app.get('/api/chat/admin-reply-page', (req, res) => {
     const userEmail = req.query.userEmail;
+    const sellerEmail = req.query.sellerEmail || '';
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Admin Quick Reply</title>
+            <title>Quick Reply to Customer</title>
             <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-slate-950 text-white min-h-screen p-4 flex items-center justify-center font-sans">
             <div class="bg-slate-900 border border-orange-500/30 p-6 rounded-2xl w-full max-w-md space-y-4">
-                <h2 class="text-orange-400 font-bold text-lg">Reply to Chat User</h2>
+                <h2 class="text-orange-400 font-bold text-lg">Reply to Customer Query</h2>
                 <p class="text-xs text-gray-400">Target User: <span class="text-white font-mono">${userEmail}</span></p>
                 <form action="/api/chat/admin-reply-submit" method="POST" class="space-y-3">
                     <input type="hidden" name="userEmail" value="${userEmail}">
+                    <input type="hidden" name="sellerEmail" value="${sellerEmail}">
                     <textarea name="message" rows="4" placeholder="Type your answer here..." required class="w-full bg-slate-950 border border-gray-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500"></textarea>
                     <button type="submit" class="w-full bg-orange-500 text-slate-950 font-black py-3 rounded-xl text-xs uppercase">Send Answer to User Chat</button>
                 </form>
@@ -198,18 +206,20 @@ app.get('/api/chat/admin-reply-page', (req, res) => {
 });
 
 app.post('/api/chat/admin-reply-submit', async (req, res) => {
-    const { userEmail, message } = req.body;
+    const { userEmail, sellerEmail, message } = req.body;
     try {
+        const isSeller = sellerEmail && sellerEmail.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
         const chatMsg = new ChatMessage({
             userEmail: userEmail.toLowerCase(),
-            sender: 'admin',
+            sellerEmail: sellerEmail ? sellerEmail.toLowerCase() : null,
+            sender: isSeller ? 'seller' : 'admin',
             message
         });
         await chatMsg.save();
         res.send(`
             <body style="background:#070a13; color:#10b981; font-family:sans-serif; text-align:center; padding-top:50px;">
                 <h2>✅ Reply Sent Successfully to Chat Box!</h2>
-                <p style="color:#94a3b8; font-size:14px;">User will now see this answer directly on the website chat.</p>
+                <p style="color:#94a3b8; font-size:14px;">The customer will now see your answer directly in the store chat window.</p>
             </body>
         `);
     } catch(e) { res.status(500).send("Error saving reply"); }
