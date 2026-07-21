@@ -5,6 +5,7 @@ let currentAccountType = 'common';
 
 let commentSelectedRating = 0;
 let commentAttachedFiles = [];
+let chatPollInterval = null;
 
 function showNotification(message, type = 'success') {
     const toast = document.getElementById('toast-notification');
@@ -78,6 +79,8 @@ function switchSellerSubTab(subTab) {
 function switchTab(tabName) {
     document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
     
+    if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+
     if (tabName === 'home') {
         document.getElementById('home-view').classList.add('active');
         loadProducts();
@@ -97,6 +100,8 @@ function switchTab(tabName) {
     }
     else if (tabName === 'messages') {
         document.getElementById('messages-view').classList.add('active');
+        loadChatMessages();
+        chatPollInterval = setInterval(loadChatMessages, 3000); // Poll live chat every 3 seconds
     }
 }
 
@@ -738,7 +743,39 @@ function logout() {
     switchTab('home');
 }
 
-// SUPPORT & PROFILE UPDATE FUNCTIONS
+// LIVE CHAT & SUPPORT FUNCTIONS
+async function loadChatMessages() {
+    if (!currentUser) return;
+    const box = document.getElementById('chat-messages-container');
+    if (!box) return;
+
+    try {
+        const res = await fetch(`/api/chat/messages/${currentUser.email}`);
+        const messages = await res.json();
+
+        let chatHtml = `
+            <div class="bg-slate-950 p-3 rounded-2xl border border-gray-900/60 text-xs text-gray-300 leading-relaxed">
+                Assalam-o-Alaikum! Welcome to MT Hub Support. Ask about active purchases, vendor payout status, or product verification requests.
+            </div>
+        `;
+
+        messages.forEach(msg => {
+            const isAdmin = msg.sender === 'admin';
+            chatHtml += `
+                <div class="flex ${isAdmin ? 'justify-start' : 'justify-end'}">
+                    <div class="max-w-[80%] p-3 rounded-2xl text-xs ${isAdmin ? 'bg-slate-900 border border-orange-500/40 text-gray-200' : 'bg-orange-500 text-slate-950 font-semibold'}">
+                        <p class="text-[9px] font-black uppercase opacity-75 mb-1">${isAdmin ? 'Central Support' : 'You'}</p>
+                        <p>${msg.message}</p>
+                    </div>
+                </div>
+            `;
+        });
+
+        box.innerHTML = chatHtml;
+        box.scrollTop = box.scrollHeight;
+    } catch(e) {}
+}
+
 async function sendSupportMessage(event) {
     event.preventDefault();
     if (!currentUser) return showNotification("Please authenticate session first.", "error");
@@ -748,24 +785,26 @@ async function sendSupportMessage(event) {
     if (!msg) return;
 
     try {
-        const res = await fetch('/api/support/message', {
+        const res = await fetch('/api/chat/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userEmail: currentUser.email,
                 userName: currentUser.username || currentUser.email.split('@')[0],
+                sender: 'user',
                 message: msg
             })
         });
 
         if (res.ok) {
-            showNotification("Your message was sent to Admin via direct email pipeline!");
             input.value = '';
+            loadChatMessages();
+            showNotification("Message sent to chat & admin email.");
         } else {
             showNotification("Failed to send message.", "error");
         }
     } catch (e) {
-        showNotification("Error routing support message.", "error");
+        showNotification("Error sending support message.", "error");
     }
 }
 
